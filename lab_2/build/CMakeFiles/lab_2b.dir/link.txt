@@ -1,0 +1,1 @@
+/usr/bin/gcc-12 -g CMakeFiles/lab_2b.dir/main.c.o CMakeFiles/lab_2b.dir/my_pico_functions.c.o -o lab_2b 
