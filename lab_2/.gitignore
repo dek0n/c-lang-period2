@@ -10,3 +10,18 @@ secrets.txt
 
 # Ignore all files in the "logs" directory
 logs/*
+
+# Ignore generated CMake files
+CMakeFiles/
+CMakeCache.txt
+*.cmake
+
+# Ignore generated Makefile files
+Makefile
+Makefile.in
+
+# Other
+pico-sdk/
+elf2uf2/
+pioasm/
+generated/
