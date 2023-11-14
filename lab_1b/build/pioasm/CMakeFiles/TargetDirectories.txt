@@ -1,3 +1,0 @@
-/home/dek0n/projects/c-lang-period2/lab_1b/build/pioasm/CMakeFiles/pioasm.dir
-/home/dek0n/projects/c-lang-period2/lab_1b/build/pioasm/CMakeFiles/edit_cache.dir
-/home/dek0n/projects/c-lang-period2/lab_1b/build/pioasm/CMakeFiles/rebuild_cache.dir
