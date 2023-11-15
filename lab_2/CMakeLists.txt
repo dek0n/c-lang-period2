@@ -10,12 +10,9 @@ include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 set(PICO_BOARD pico_w)
 
 # Set name of project (as PROJECT_NAME) and C/C   standards
-project(blink C CXX ASM)
-# set(CMAKE_C_STANDARD 11)
-# set(CMAKE_CXX_STANDARD 17)
-
-
-
+project(lab_2 C CXX ASM)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 # Creates a pico-sdk subdirectory in our project for the libraries
 pico_sdk_init()
@@ -27,8 +24,10 @@ add_compile_options(-Wall
 )
 
 # Tell CMake where to find the executable source file
-add_executable(${PROJECT_NAME} 
+add_executable(${PROJECT_NAME}
     main.c
+    my_pico_definitions.h
+    my_pico_functions.c
 )
 
 # Create map/bin/hex/uf2 files
@@ -37,8 +36,15 @@ pico_add_extra_outputs(${PROJECT_NAME})
 # Link to pico_stdlib (gpio, time, etc. functions)
 target_link_libraries(${PROJECT_NAME} 
     pico_stdlib
+    hardware_pwm
 )
 
 # Enable usb output, disable uart output
 pico_enable_stdio_usb(${PROJECT_NAME} 1)
 pico_enable_stdio_uart(${PROJECT_NAME} 0)
+
+# this adds a post build command that tries to copy uf2 to Pico
+
+add_custom_command(TARGET ${PROJECT_NAME}
+
+POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.uf2 /media/dek0n/RPI-RP2/ )

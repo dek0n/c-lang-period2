@@ -15,13 +15,3 @@ logs/*
 CMakeFiles/
 CMakeCache.txt
 *.cmake
-
-# Ignore generated Makefile files
-Makefile
-Makefile.in
-
-# Other
-pico-sdk/
-elf2uf2/
-pioasm/
-generated/
