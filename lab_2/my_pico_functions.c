@@ -24,6 +24,7 @@ bool rt_callback_function_sw(struct repeating_timer *rt) // Callback function fo
         ptr_switch_states->switch1 = gpio_get(PIN_SW1);
         ptr_switch_states->switch2 = gpio_get(PIN_SW2);
         ptr_switch_states->sw_all_toggle = true; // allow toggle
+        ptr_switch_states->rot_push = gpio_get(PIN_ROT_Push);
     }
     return true;
 }
@@ -51,11 +52,11 @@ void initialize_all_sw_buttons() // Initialize all 3 SW buttons at once
     gpio_pull_up(PIN_SW2);
 }
 
-void all_leds_on(int brightness)
+void all_leds_on(int led_brightness)
 {
-    pwm_set_gpio_level(PIN_LED1, brightness);
-    pwm_set_gpio_level(PIN_LED2, brightness);
-    pwm_set_gpio_level(PIN_LED3, brightness);
+    pwm_set_gpio_level(PIN_LED1, led_brightness);
+    pwm_set_gpio_level(PIN_LED2, led_brightness);
+    pwm_set_gpio_level(PIN_LED3, led_brightness);
 }
 
 void all_leds_off()
