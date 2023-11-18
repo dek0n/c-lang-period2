@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "pico/stdlib.h"
 #include "pico/time.h"
@@ -49,6 +50,7 @@ void initialize_all_leds();
 void initialize_all_sw_buttons();
 void all_leds_on(int led_brightness);
 void all_leds_off();
+void processDevEui(const char *devEuiWithPrefix, char *result);
 
 // void my_interrupt_handler(); // this function is currently in main.c
 

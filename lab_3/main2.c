@@ -1,21 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include "my_uart_functions.h"  // Replace with the actual header file for your UART functions
-#include "my_delay_functions.h" // Replace with the actual header file for your delay functions
-#include "my_gpio_functions.h"  // Replace with the actual header file for your GPIO functions
-
-#define MAX_RETRIES 5
-#define TIMEOUT_MS 500
-#define DEV_EUI_LENGTH 23
-
-typedef enum {
-    STATE_WAIT_FOR_BUTTON,
-    STATE_CONNECT_TO_MODULE,
-    STATE_CHECK_RESPONSE,
-    STATE_READ_FIRMWARE,
-    STATE_READ_DEVEUI
-} State;
-
 void removeColonsAndConvertToLower(char* input, char* output) {
     // Implement this function to remove colons and convert to lowercase
     // Example: input "2C:F7:F1:20:32:30:A5:70" -> output "2cf7f1203230a570"
