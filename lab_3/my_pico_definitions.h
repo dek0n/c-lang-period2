@@ -1,10 +1,13 @@
 #include <stdio.h>
 #include <math.h>
+#include <string.h>
+
 #include "pico/stdlib.h"
 #include "pico/time.h"
 #include "hardware/irq.h"
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
+#include "hardware/uart.h" // ??
 
 // Pins
 #define PIN_LED1 22
