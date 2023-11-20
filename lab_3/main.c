@@ -35,7 +35,7 @@ int main()
     const uint8_t message_firmaware[] = "AT+VER\n";
     const uint8_t message_DevEui[] = "AT+ID=DevEui\n";
     char response_string[STRLEN];
-    char response_DevEui[17]; 
+    char response_DevEui[17];
     int pos = 0;
     int connection_attempts = 0;
     bool connection_status = false;
@@ -58,6 +58,7 @@ int main()
             break;
 
         case STATE_CONNECT_TO_MODULE:
+            clear_uart_buffer(uart0);
             uart_write_blocking(uart0, message_AT, strlen((const char *)message_AT)); // Write to the UART for transmission. This function will block until all the data has been sent to the UART
             sleep_ms(50);
             connection_attempts = 0;
@@ -78,8 +79,7 @@ int main()
                                 printf("Connected to LoRa module.\n");
                                 pos = 0; // start over after line is printed
                                 connection_status = true;
-                                while (!uart_getc(uart0))
-                                    ; // clearing buffer
+                                clear_uart_buffer(uart0); // clearing buffer
                                 state = STATE_READ_FIRMWARE;
                                 goto exitLoops;
                             }
@@ -88,8 +88,7 @@ int main()
                                 printf("ERROR, received: '%s'\n", response_string);
                                 pos = 0; // start over after line is printed
                                 connection_status = false;
-                                while (!uart_getc(uart0))
-                                    ; // clearing buffer
+                                clear_uart_buffer(uart0); // clearing buffer
                                 state = STATE_WAIT_FOR_BUTTON;
                                 break;
                             }
@@ -106,7 +105,7 @@ int main()
                 else
                 {
                     connection_attempts += 1;
-                    printf("connection_attempts %d\n", connection_attempts);
+                    // printf("connection_attempts %d\n", connection_attempts);
                 }
             }
             if (!connection_status)
@@ -167,8 +166,8 @@ int main()
                         printf("%s\n", response_DevEui);
                         pos = 0; // start over after line is printed
                         while (!uart_getc(uart0))
-                            ;                               // clearing buffer
-                        memset(response_string, 0, STRLEN); // clearing response string maybe not needed?
+                            ; // clearing buffer
+                        // memset(response_string, 0, STRLEN); // clearing response string maybe not needed?
                         state = STATE_WAIT_FOR_BUTTON;
                         break;
                     }

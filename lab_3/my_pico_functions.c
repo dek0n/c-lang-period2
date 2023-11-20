@@ -66,17 +66,27 @@ void all_leds_off()
     pwm_set_gpio_level(PIN_LED3, 0);
 }
 
-void processDevEui(const char *devEuiWithPrefix, char *result) {
+void processDevEui(const char *devEuiWithPrefix, char *result)
+{
     const char *devEui = devEuiWithPrefix + strlen("+ID: DevEui, ");
 
     int resultIndex = 0;
-    for (int i = 0; devEui[i] != '\0'; ++i) {
-        if (isxdigit((unsigned char)devEui[i])) {
+    for (int i = 0; devEui[i] != '\0'; ++i)
+    {
+        if (isxdigit((unsigned char)devEui[i]))
+        {
             result[resultIndex++] = tolower((unsigned char)devEui[i]);
-        } else if (devEui[i] == ':') {
+        }
+        else if (devEui[i] == ':')
+        {
             continue;
         }
     }
     result[resultIndex] = '\0';
-    
+}
+
+void clear_uart_buffer(uart_inst_t *uart)
+{
+    while (uart_is_readable(uart))
+        uart_getc(uart);
 }
