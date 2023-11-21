@@ -50,7 +50,7 @@ void initialize_all_leds();
 void initialize_all_sw_buttons();
 void all_leds_on(int led_brightness);
 void all_leds_off();
-void processDevEui(const char *devEuiWithPrefix, char *result);
+void process_DevEui(const char *devEuiWithPrefix, char *result);
 void clear_uart_buffer(uart_inst_t *uart);
 
 // void my_interrupt_handler(); // this function is currently in main.c

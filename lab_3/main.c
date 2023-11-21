@@ -45,7 +45,6 @@ int main()
     exitLoops:
         switch (state)
         {
-        /* 1. Program waits for user to press SW_0. When user presses the button then program starts communication with the LoRa module.*/
         case STATE_WAIT_FOR_BUTTON:
             if (!gpio_get(PIN_SW0))
             {
@@ -54,8 +53,8 @@ int main()
                     sleep_ms(50);
                 }
                 state = STATE_CONNECT_TO_MODULE;
+                break;
             }
-            break;
 
         case STATE_CONNECT_TO_MODULE:
             clear_uart_buffer(uart0);
@@ -85,7 +84,6 @@ int main()
                             }
                             else
                             {
-                                printf("ERROR, received: '%s'\n", response_string);
                                 pos = 0; // start over after line is printed
                                 connection_status = false;
                                 clear_uart_buffer(uart0); // clearing buffer
@@ -105,7 +103,6 @@ int main()
                 else
                 {
                     connection_attempts += 1;
-                    // printf("connection_attempts %d\n", connection_attempts);
                 }
             }
             if (!connection_status)
@@ -128,10 +125,8 @@ int main()
                     {
                         response_string[pos] = '\0';
                         printf("%s\n", response_string);
-                        pos = 0; // start over after line is printed
-                        while (!uart_getc(uart0))
-                            ;                               // clearing buffer
-                        memset(response_string, 0, STRLEN); // clearing response string maybe not needed?
+                        pos = 0;                  // start over after line is printed
+                        clear_uart_buffer(uart0); // clearing buffer
                         state = STATE_READ_DEVEUI;
                         break;
                     }
@@ -162,12 +157,10 @@ int main()
                     if (c == '\n' || c == '\r')
                     {
                         response_string[pos] = '\0';
-                        processDevEui(response_string, response_DevEui);
+                        process_DevEui(response_string, response_DevEui);
                         printf("%s\n", response_DevEui);
-                        pos = 0; // start over after line is printed
-                        while (!uart_getc(uart0))
-                            ; // clearing buffer
-                        // memset(response_string, 0, STRLEN); // clearing response string maybe not needed?
+                        pos = 0;                  // start over after line is printed
+                        clear_uart_buffer(uart0); // clearing buffer
                         state = STATE_WAIT_FOR_BUTTON;
                         break;
                     }
@@ -190,18 +183,3 @@ int main()
     }
     return 0;
 }
-
-/*2. Program message_to_sends command “AT” to module and waits for response for 500 ms. If no response is
-received or the response is not correct the program tries again up to five times. If no response is
-received after five attempts program prints “module not responding” and goes back to step 1. If
-response is received program prints “Connected to LoRa module”.*/
-
-/*3. Program reads firmware version of the module and prints the result. If no response is received in
-500 ms program prints “Module stopped responding” and goes back to step 1.*/
-
-/*4. Program reads DevEui from the device. If no response is received in 500 ms program prints
-“Module stopped responding” and goes back to step 1. DevEui contains 8 bytes that the module
-outputs in hexadecimal separated by colons. The program must remove the colons between the
-bytes and convert the hexadecimal digits to lower case.*/
-
-/*5. Go to step 1*/
