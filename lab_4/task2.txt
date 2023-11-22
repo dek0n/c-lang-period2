@@ -1,0 +1,56 @@
+Exercise 2 – Store log strings in EEPROM
+Improve Exercise 1 by adding a persistent log that stores messages to EEPROM. When the program starts it
+writes “Boot” to the log and every time when state or LEDs is changed the state change message, as
+described in Exercise 1, is also written to the log.
+The log must have the following properties:
+• Log starts from address 0 in the EEPROM.
+• First two kilobytes (2048 bytes) of EEPROM are used for the log.
+• Log is persistent, after power up writing to log continues from location where it left off last time.
+The log is erased only when it is full or by user command.
+• Each log entry is reserved 64 bytes.
+o First entry is at address 0, second at address 64, third at address 128, etc.
+o Log can contain up to 32 entries.
+• A log entry consists of a string that contains maximum 61 characters, a terminating null character
+(zero) and two-byte CRC that is used to validate the integrity of the data. A maximum length log
+entry uses all 64 bytes. A shorter entry will not use all reserved bytes. The string must contain at
+least one character.
+• When a log entry is written to the log, the string is written to the log including the terminating zero.
+Immediately after the terminating zero follows a 16-bit CRC, MSB first followed by LSB.
+o Entry is written to the first unused (invalid) location that is available.
+o If the log is full then the log is erased first and then entry is written to address 0.
+• User can read the content of the log by typing read and pressing enter.
+o Program starts reading and validating log entries starting from address zero. If a valid string
+is found it is printed and program reads string from the next location.
+o A string is valid if the first character is not zero, there is a zero in the string before index 62,
+and the string passes the CRC validation.
+o Printing stops when an invalid string is encountered or the end log are is reached.
+• User can erase the log by typing erase and pressing enter.
+o Erasing is done by writing a zero at the first byte of every log entry.
+
+Figure 1 Structure of log in EEPROM
+
+Use following code for CRC-calculation
+(adapted from: https://stackoverflow.com/questions/10564491/function-to-calculate-a-crc16-checksum )
+uint16_t crc16(const uint8_t *data_p, size_t length) {
+uint8_t x;
+uint16_t crc = 0xFFFF;
+while (length--) {
+x = crc >> 8 ^ *data_p++;
+x ^= x >> 4;
+crc = (crc << 8) ^ ((uint16_t) (x << 12)) ^ ((uint16_t) (x << 5)) ^ ((uint16_t) x);
+}
+return crc;
+}
+The property of CRC is such that when a CRC that is calculated over a number of data bytes is placed
+immediately after the bytes and the CRC is calculated over the data bytes plus the CRC-bytes the result is
+zero, provided that the data has not been modified after CRC was calculated.
+For example:
+uint8_t buffer[10] = { 51, 32, 93, 84, 75, 16, 17, 28 };
+uint16_t crc = crc16(buffer, 8);
+// put CRC after data
+buffer[8] = (uint8_t) (crc >> 8);
+buffer[9] = (uint8_t) crc;
+// validate data
+if(crc16(buffer, 10) != 0) {
+printf("Error\n");
+}

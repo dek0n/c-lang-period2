@@ -1,0 +1,38 @@
+Exercise 1 – Store the state of the program to EEPROM
+Implement a program that switches LEDs on and off and remembers the state of the LEDs across reboot
+and/or power off. The program should work as follows:
+• When the program starts it reads the state of the LEDs from EEPROM. If no valid state is found in
+the EEPROM the middle LED is switched on and the other two are switched off. The program must
+print number of seconds since power up and the state of the LEDs to stdout. Use time_us_64() to
+get a timestamp and convert that to seconds.
+• Each of the buttons SW0, SW1, and SW2 on the development board is associated with an LED.
+When user presses a button, the corresponding LED toggles. Pressing and holding the button may
+not make the LED to blink or to toggle multiple times. When state of the LEDs is changed the new
+state must be printed to stdout with a number of seconds since program was started.
+• When the state of an LEDs changes the program stores the state of all LEDs in the EEPROM and
+prints the state to LEDs to the debug UART. The program must employ a method to validate that
+settings read from the EEPROM are correct.
+• The program must use the highest possible EEPROM address to store the LED state.
+A simple way to validate the LED state is store it to EEPROM twice: normally (un-inverted) and inverted.
+When the state is read back both values are read, the inverted value is inverted after reading, and then the
+values are compared. If the values match then LED state was stored correctly in the EEPROM. By storing an
+inverted value, we can avoid case where both bytes are identical, a typical case with erased/out of the box
+memory, to be accepted as a valid value.
+For example:
+typedef struct ledstate {
+uint8_t state;
+uint8_t not_state;
+} ledstate;
+void set_led_state(ledstate *ls, uint8_t value)
+{
+ls->state = value;
+ls->not_state = ~value;
+}
+Above is a helper function that sets both values in the struct. By using helper functions, we can ensure that
+both values are set correctly in the structure. In the same style we can write a function that validates the
+integrity of the structure that was read from the EEPROM.
+bool led_state_is_valid(ledstate *ls) {
+return ls->state == (uint8_t) ~ls->not_state;
+}
+Typecast to uint8_t is needed for the compare to work correctly because operand of bitwise not gets
+promoted to an integer. Typecast to 8-bit value discards the extra bits that got added in the promotion.
