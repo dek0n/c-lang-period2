@@ -1,0 +1,32 @@
+Serial Wire Debug (SWD)
+Edit this on GitHub
+
+Serial Wire Debug (SWD) is a two-pin interface (SWDIO and SWCLK) alternative to the JTAG four- or five-pin debugging interface standard.
+
+Uploading new programs to your Pico
+The Pico Debug Probe will let you load binaries via the SWD port and OpenOCD: you will not need to unplug, and then push-and-hold, the BOOTSEL button every time you push a new binary to your Pico. Using the Debug Probe uploading new binaries is an entirely hands off affair.
+
+Once you have built a binary:
+
+# For writing .elf to pico with openOCD
+add_custom_command(
+    TARGET ${PROJECT_NAME}
+    POST_BUILD
+    COMMAND openocd -f interface/cmsis-dap.cfg -f target/rp2040.cfg -c "adapter speed 5000" -c "program $<TARGET_FILE:${PROJECT_NAME}> verify reset exit"
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT "Programming the target using OpenOCD"
+)
+
+#e.g. it works also
+# sudo openocd -f interface/cmsis-dap.cfg -f target/rp2040.cfg -c "adapter speed 5000" -c "program build/lab_4.elf verify reset exit"
+
+with some DEPENDS, but it worked without
+# Add a custom target for programming using OpenOCD
+add_custom_target(program
+    COMMAND ${CMAKE_COMMAND} -E echo "Programming with OpenOCD..."
+    COMMAND openocd -f interface/cmsis-dap.cfg -f target/rp2040.cfg -c "adapter speed 5000" -c "program ${CMAKE_BINARY_DIR}/build/${PROJECT_NAME}.elf verify reset exit"
+    COMMAND ${CMAKE_COMMAND} -E echo "Programming complete."
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT "Programming the target using OpenOCD"
+    DEPENDS ${PROJECT_NAME} # Add this line to specify the dependency
+)

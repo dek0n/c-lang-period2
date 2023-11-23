@@ -1,3 +1,4 @@
+# Verision for Pico Probe debugger making only .elf file and writing it to pico.
 # Set minimum required version of CMake
 cmake_minimum_required(VERSION 3.12)
 
@@ -10,7 +11,7 @@ include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 set(PICO_BOARD pico_w)
 
 # Set name of project (as PROJECT_NAME) and C/C   standards
-project(lab_2 C CXX ASM)
+project(lab_4 C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
@@ -31,20 +32,36 @@ add_executable(${PROJECT_NAME}
 )
 
 # Create map/bin/hex/uf2 files
-pico_add_extra_outputs(${PROJECT_NAME})
+#pico_add_extra_outputs(${PROJECT_NAME})
+
+# Create uf2
+# pico_add_uf2_output(${PROJECT_NAME})
+
 
 # Link to pico_stdlib (gpio, time, etc. functions)
 target_link_libraries(${PROJECT_NAME} 
     pico_stdlib
     hardware_pwm
+    hardware_i2c
+    hardware_uart
+    hardware_gpio
+    hardware_irq
+    pico_cyw43_arch_none
 )
 
-# Enable usb output, disable uart output
-pico_enable_stdio_usb(${PROJECT_NAME} 1)
-pico_enable_stdio_uart(${PROJECT_NAME} 0)
+# Disable usb output, enable uart output - CMakeLists version fo Pico Probe debugger
+pico_enable_stdio_usb(${PROJECT_NAME} 0)
+pico_enable_stdio_uart(${PROJECT_NAME} 1)
 
-# this adds a post build command that tries to copy uf2 to Pico
 
-add_custom_command(TARGET ${PROJECT_NAME}
+# For writing .elf to pico with openOCD
+add_custom_command(
+    TARGET ${PROJECT_NAME}
+    POST_BUILD
+    COMMAND openocd -f interface/cmsis-dap.cfg -f target/rp2040.cfg -c "adapter speed 5000" -c "program $<TARGET_FILE:${PROJECT_NAME}> verify reset exit"
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT "Programming the target using OpenOCD"
+)
 
-POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.uf2 /media/dek0n/RPI-RP2/ )
+#e.g. it works also
+# sudo openocd -f interface/cmsis-dap.cfg -f target/rp2040.cfg -c "adapter speed 5000" -c "program build/lab_4.elf verify reset exit"

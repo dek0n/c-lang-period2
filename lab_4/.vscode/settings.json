@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "my_pico_definitions.h": "c"
+    },
+    "cmake.configureOnOpen": false
+}

@@ -1,26 +1,33 @@
 #include "my_pico_definitions.h"
 
-#define BAUD_RATE 9600
-#define UART_TX_PIN 0
-#define UART_RX_PIN 1
-#define STRLEN 50            // 528
-#define MY_TIMEOUT_US 500000 // in microseconds
-#define MAX_ATTEMPTS 5
-#define RESPONSE_AT "+AT: OK"
-
-
+// #define MY_I2C_BAUD_RATE 100000
+// int main()
+// {
+//     stdio_init_all();
+//     initialize_all_sw_buttons();
+//     initialize_all_leds();
+//     initialize_pwm_pin(PIN_LED3);
+//     i2c_init(i2c0, MY_I2C_BAUD_RATE); // Either i2c0 or i2c1, baudrate	Baudrate in Hz (e.g. 100kHz is 100000) Returns Actual set baudrate
+// }
 
 int main()
 {
+
+    const uint led_pin = 22;
+    // uint count = 0;
+    gpio_init(led_pin);
+    gpio_set_dir(led_pin, GPIO_OUT);
     stdio_init_all();
-    initialize_all_sw_buttons();
+    cyw43_arch_init();
 
-    // Set up our UART with the required speed.
-    uart_init(uart0, BAUD_RATE);
-    // Set the TX and RX pins by using the function select on the GPIO
-    // See datasheet for more information on function select
-    gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
-    gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
-
-
+    while (true)
+    {
+        // printf("Blink! %u\r\n", ++count);
+        // gpio_put(led_pin, true);
+        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
+        sleep_ms(1000);
+        // gpio_put(led_pin, false);
+        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
+        sleep_ms(1000);
+    }
 }
