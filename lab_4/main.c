@@ -12,9 +12,8 @@
 
 int main()
 {
-
     const uint led_pin = 22;
-    // uint count = 0;
+    uint count = 0;
     gpio_init(led_pin);
     gpio_set_dir(led_pin, GPIO_OUT);
     stdio_init_all();
@@ -22,7 +21,7 @@ int main()
 
     while (true)
     {
-        // printf("Blink! %u\r\n", ++count);
+        printf("Blink! %u\r\n", ++count);
         // gpio_put(led_pin, true);
         cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
         sleep_ms(1000);
