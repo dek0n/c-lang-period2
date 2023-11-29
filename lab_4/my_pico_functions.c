@@ -23,7 +23,6 @@ bool rt_callback_function_sw(struct repeating_timer *rt) // Callback function fo
         ptr_switch_states->switch0 = gpio_get(PIN_SW0); // Modify
         ptr_switch_states->switch1 = gpio_get(PIN_SW1);
         ptr_switch_states->switch2 = gpio_get(PIN_SW2);
-        ptr_switch_states->sw_all_toggle = true; // allow toggle
         ptr_switch_states->rot_push = gpio_get(PIN_ROT_Push);
     }
     return true;
@@ -89,4 +88,21 @@ void clear_uart_buffer(uart_inst_t *uart)
 {
     while (uart_is_readable(uart))
         uart_getc(uart);
+}
+
+void print_time_stamp_s()
+{
+    int x = time_us_64() / 1000000;
+    printf("%ds since powerup\n", x);
+}
+
+bool led_state_is_valid(ledstate *ls) // Validation of stored in EEPROM ledstate by comparing original with inverted.
+{                                     // Typecast to uint8_t is needed for the compare to work correctly because operand of bitwise not gets promoted to an integer. Typecast to 8-bit value discards the extra bits that got added in the promotion.
+    return ls->state == (uint8_t)~ls->not_state;
+}
+
+void set_led_state(ledstate *ls, uint8_t value) // helper function that sets value and inverted value of state in a structure
+{
+    ls->state = value;
+    ls->not_state = ~value;
 }

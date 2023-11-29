@@ -8,7 +8,7 @@
 #include "hardware/irq.h"
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
-#include "hardware/uart.h" 
+#include "hardware/uart.h"
 #include "hardware/i2c.h"
 #include "pico/cyw43_arch.h"
 
@@ -38,12 +38,21 @@ struct SwitchStates // structure for sw buttons states
     int switch0;
     int switch1;
     int switch2;
+
+    bool sw_changed;
+    
     bool sw_all_toggle;
 
     int rot_push;
     int rot_turn_direction; // 0 counterclock, 1 clockwise
     bool rot_turn_toggle;
 };
+
+typedef struct LedStates // structure for led states
+{
+    uint8_t state;
+    uint8_t not_state;
+} ledstate;
 
 // Function initializations
 void initialize_pwm_pin(int pin_for_pwm); // maybe change name
@@ -54,6 +63,9 @@ void all_leds_on(int led_brightness);
 void all_leds_off();
 void process_DevEui(const char *devEuiWithPrefix, char *result);
 void clear_uart_buffer(uart_inst_t *uart);
+void print_time_stamp_s();
+bool led_state_is_valid(ledstate *ls);
+void set_led_state(ledstate *ls, uint8_t value);
 
 // void my_interrupt_handler(); // this function is currently in main.c
 
