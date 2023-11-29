@@ -40,13 +40,19 @@ int main()
     uint8_t data_to_write[4] = {};
 
     // Memory address divided into two 8-bit parts
-    const uint16_t memory_slot = 0x7FFF; // 0x7FFF is highest possible
+    const uint16_t memory_slot = 0x7FFE; // 0x7FFF is highest possible
     data_to_write[0] = (memory_slot >> 8) & 0xFF;
     data_to_write[1] = memory_slot & 0xFF;
-    data_to_write[2] = 0b010;
+
+    uint8_t buf[2];
 
     i2c_write_blocking(i2c0, DEVADDR, data_to_write, 2, false);
-    i2c_read_blocking(i2c0, DEVADDR, &led_states.state, 2, false);
+    sleep_ms(10);
+    i2c_read_blocking(i2c0, DEVADDR, buf, 2, false);
+    led_states.state = buf[0];
+    led_states.not_state = buf[1];
+    print_binary(buf[0]);
+    print_binary(buf[1]);
 
     // Check led state to turn on or off leds
     if (led_state_is_valid(&led_states))
@@ -63,6 +69,8 @@ int main()
         gpio_put(PIN_LED2, (led_states.state >> 1) & 0x01);
         gpio_put(PIN_LED3, (led_states.state >> 2) & 0x01);
     }
+    printf("| %d | %d | %d | ", (led_states.state & 0x01), ((led_states.state >> 1) & 0x01), ((led_states.state >> 2) & 0x01));
+    print_time_stamp_s();
 
     while (true)
     {
@@ -72,11 +80,14 @@ int main()
             data_to_write[2] = led_states.state;
             led_states.not_state = ~led_states.state;
             data_to_write[3] = led_states.not_state;
-            i2c_write_blocking(i2c0, DEVADDR, data_to_write, 2, false);
+            print_binary(led_states.state);
+            print_binary(led_states.not_state);
+            i2c_write_blocking(i2c0, DEVADDR, data_to_write, 4, false);
             sleep_ms(10);
-            print_time_stamp_s();
+
             printf("| %d | %d | %d | ", (led_states.state & 0x01), ((led_states.state >> 1) & 0x01), ((led_states.state >> 2) & 0x01));
-            
+            print_time_stamp_s();
+
             gpio_put(PIN_LED1, (led_states.state & 0x01));
             gpio_put(PIN_LED2, (led_states.state >> 1) & 0x01);
             gpio_put(PIN_LED3, (led_states.state >> 2) & 0x01);

@@ -106,3 +106,10 @@ void set_led_state(ledstate *ls, uint8_t value) // helper function that sets val
     ls->state = value;
     ls->not_state = ~value;
 }
+
+void print_binary(uint8_t value) {
+    for (int i = 7; i >= 0; i--) {
+        printf("%c", (value & (1 << i)) ? '1' : '0');
+    }
+    printf("\n");
+}
