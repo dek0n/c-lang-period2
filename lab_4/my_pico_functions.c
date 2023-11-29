@@ -96,6 +96,12 @@ void print_time_stamp_s()
     printf("%ds since powerup\n", x);
 }
 
+void print_led_states(ledstate *ls)
+{
+    printf("| %d | %d | %d | ", (ls->state & 0x01), ((ls->state >> 1) & 0x01), ((ls->state >> 2) & 0x01));
+}
+
+
 bool led_state_is_valid(ledstate *ls) // Validation of stored in EEPROM ledstate by comparing original with inverted.
 {                                     // Typecast to uint8_t is needed for the compare to work correctly because operand of bitwise not gets promoted to an integer. Typecast to 8-bit value discards the extra bits that got added in the promotion.
     return ls->state == (uint8_t)~ls->not_state;
@@ -107,9 +113,18 @@ void set_led_state(ledstate *ls, uint8_t value) // helper function that sets val
     ls->not_state = ~value;
 }
 
-void print_binary(uint8_t value) {
-    for (int i = 7; i >= 0; i--) {
+void print_binary(uint8_t value)
+{
+    for (int i = 7; i >= 0; i--)
+    {
         printf("%c", (value & (1 << i)) ? '1' : '0');
     }
     printf("\n");
+}
+
+void update_leds_from_led_states(ledstate *ls)
+{
+    gpio_put(PIN_LED1, (ls->state & 0x01));
+    gpio_put(PIN_LED2, (ls->state >> 1) & 0x01);
+    gpio_put(PIN_LED3, (ls->state >> 2) & 0x01);
 }

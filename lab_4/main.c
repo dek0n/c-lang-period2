@@ -1,103 +1,98 @@
 #include "my_pico_definitions.h"
 
-#define MY_I2C_BAUD_RATE 100000 // Baudrate of I2C in Hz (e.g. 100kHz is 100000)
+// I2C Configuration
+#define MY_I2C_BAUD_RATE 100000
 #define I2C0_SDA_PIN 16
 #define I2C0_SCL_PIN 17
 
+// EEPROM Configuration
 #define DEVADDR 0x50
+#define MEMORY_ADDR_LED_STATES 0x7FFE // Second-highest memory address in EEPROM
 
-struct LedStates led_states;   // Create an instance of the led states structure
-struct SwitchStates sw_states; // Create an instance of the structure and a void pointer
+// Constants for Bitwise Operations
+#define MASK_8bit_11111111 0xFF
+
+// LED and Switch States Structures
+struct LedStates led_states;   // Instance of the LED states structure
+struct SwitchStates sw_states; // Instance of the switch states structure
 
 int main()
 {
+    // Initialization
     stdio_init_all();
     initialize_all_sw_buttons();
     initialize_all_leds();
 
-    // I2C
-    i2c_init(i2c0, MY_I2C_BAUD_RATE); // Either i2c0 or i2c1, baudrate in HZ, Returns Actual set baudrate
+    // I2C Initialization
+    i2c_init(i2c0, MY_I2C_BAUD_RATE);
     gpio_set_function(I2C0_SDA_PIN, GPIO_FUNC_I2C);
     gpio_set_function(I2C0_SCL_PIN, GPIO_FUNC_I2C);
     gpio_pull_up(I2C0_SDA_PIN);
     gpio_pull_up(I2C0_SCL_PIN);
 
-    sw_states.switch0 = 1; // mb dont need to set it?
-    sw_states.switch1 = 1;
-    sw_states.switch2 = 1;
-
-    sw_states.sw_changed = false;
-
-    sw_states.sw_all_toggle = true; // toggle for debouncing
-
+    // Timer for updating states buttons
     void *ptr_current_sw_states = &sw_states;
-
-    static struct repeating_timer my_timer; // https://www.raspberrypi.com/documentation//pico-sdk/high_level.html#rpip8e15c0ded1c0628069f4
-    my_timer.user_data = NULL;              // to here pass data to store in the repeating_timer structure for use by the callback, 3rd parameter in add_repeating_timer_ms
+    static struct repeating_timer my_timer;
+    my_timer.user_data = NULL;
     static struct repeating_timer *ptr_my_timer = &my_timer;
     add_repeating_timer_ms(10, rt_callback_function_sw, ptr_current_sw_states, ptr_my_timer);
 
-    uint8_t data_to_write[4] = {};
+    // Initialization of Switch States
+    sw_states.sw_changed = false;
 
-    // Memory address divided into two 8-bit parts
-    const uint16_t memory_slot = 0x7FFE; // 0x7FFF is highest possible
-    data_to_write[0] = (memory_slot >> 8) & 0xFF;
-    data_to_write[1] = memory_slot & 0xFF;
+    // Buffers for I2C to EEPROM write and read
+    uint8_t write_buf[4];
+    uint8_t read_buf[2];
 
-    uint8_t buf[2];
+    // Reading from EEPROM on power-up
+    const uint16_t memory_slot = MEMORY_ADDR_LED_STATES;
+    write_buf[0] = (memory_slot >> 8) & MASK_8bit_11111111; // Memory address divided into two 8-bit parts
+    write_buf[1] = memory_slot & MASK_8bit_11111111;
 
-    i2c_write_blocking(i2c0, DEVADDR, data_to_write, 2, false);
-    sleep_ms(10);
-    i2c_read_blocking(i2c0, DEVADDR, buf, 2, false);
-    led_states.state = buf[0];
-    led_states.not_state = buf[1];
-    print_binary(buf[0]);
-    print_binary(buf[1]);
+    i2c_write_blocking(i2c0, DEVADDR, write_buf, 2, false);
+    i2c_read_blocking(i2c0, DEVADDR, read_buf, 2, false);
+    led_states.state = read_buf[1];     // State is the last (task requirement)
+    led_states.not_state = read_buf[0]; // Inverse of state goes first
 
-    // Check led state to turn on or off leds
-    if (led_state_is_valid(&led_states))
+    // Applying starting states
+    if (led_state_is_valid(&led_states)) // Comparing state to inverse state to validate reading from memory; otherwise, default states
     {
-        gpio_put(PIN_LED1, (led_states.state & 0x01));
-        gpio_put(PIN_LED2, (led_states.state >> 1) & 0x01);
-        gpio_put(PIN_LED3, (led_states.state >> 2) & 0x01);
+        update_leds_from_led_states(&led_states); // Update LEDs
     }
     else
     {
-        led_states.state = 0b010;
-
-        gpio_put(PIN_LED1, (led_states.state & 0x01));
-        gpio_put(PIN_LED2, (led_states.state >> 1) & 0x01);
-        gpio_put(PIN_LED3, (led_states.state >> 2) & 0x01);
+        led_states.state = 0b010;                 // Default state of LEDs
+        update_leds_from_led_states(&led_states); // Update LEDs
     }
-    printf("| %d | %d | %d | ", (led_states.state & 0x01), ((led_states.state >> 1) & 0x01), ((led_states.state >> 2) & 0x01));
+
+    // Printing initial states
+    print_led_states(&led_states);
     print_time_stamp_s();
 
+    // Main Loop
     while (true)
     {
-        if (sw_states.sw_changed)
-        {
-
-            data_to_write[2] = led_states.state;
-            led_states.not_state = ~led_states.state;
-            data_to_write[3] = led_states.not_state;
-            print_binary(led_states.state);
-            print_binary(led_states.not_state);
-            i2c_write_blocking(i2c0, DEVADDR, data_to_write, 4, false);
-            sleep_ms(10);
-
-            printf("| %d | %d | %d | ", (led_states.state & 0x01), ((led_states.state >> 1) & 0x01), ((led_states.state >> 2) & 0x01));
-            print_time_stamp_s();
-
-            gpio_put(PIN_LED1, (led_states.state & 0x01));
-            gpio_put(PIN_LED2, (led_states.state >> 1) & 0x01);
-            gpio_put(PIN_LED3, (led_states.state >> 2) & 0x01);
-            sw_states.sw_changed = false;
-        }
-
-        // Updating states on press of button
+        // Updating toggle on release of a button
         if (sw_states.switch0 && sw_states.switch1 && sw_states.switch2)
         {
             sw_states.sw_all_toggle = true;
+        }
+
+        if (sw_states.sw_changed)
+        {
+            update_leds_from_led_states(&led_states); // Update LEDs
+
+            // Writing new states to EEPROM
+            write_buf[3] = led_states.state; // State is the last (task requirement)
+            led_states.not_state = ~led_states.state;
+            write_buf[2] = led_states.not_state; // Inverse state goes first
+            i2c_write_blocking(i2c0, DEVADDR, write_buf, 4, false);
+
+            // Printing states
+            print_led_states(&led_states);
+            print_time_stamp_s();
+
+            sw_states.sw_changed = false;
         }
 
         if (sw_states.sw_all_toggle && (!sw_states.switch0 || !sw_states.switch1 || !sw_states.switch2))
@@ -105,17 +100,17 @@ int main()
             sw_states.sw_all_toggle = false;
             if (!sw_states.switch0 && !sw_states.sw_changed)
             {
-                led_states.state ^= 0b100;
+                led_states.state ^= 0b100; // Inversion of single bit with mask
                 sw_states.sw_changed = true;
             }
             if (!sw_states.switch1 && !sw_states.sw_changed)
             {
-                led_states.state ^= 0b010;
+                led_states.state ^= 0b010; // Inversion of single bit with mask
                 sw_states.sw_changed = true;
             }
             if (!sw_states.switch2 && !sw_states.sw_changed)
             {
-                led_states.state ^= 0b001;
+                led_states.state ^= 0b001; // Inversion of single bit with mask
                 sw_states.sw_changed = true;
             }
         }

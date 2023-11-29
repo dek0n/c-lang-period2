@@ -64,9 +64,11 @@ void all_leds_off();
 void process_DevEui(const char *devEuiWithPrefix, char *result);
 void clear_uart_buffer(uart_inst_t *uart);
 void print_time_stamp_s();
+void print_led_states(ledstate *ls);
 bool led_state_is_valid(ledstate *ls);
 void set_led_state(ledstate *ls, uint8_t value);
 void print_binary(uint8_t value);
+void update_leds_from_led_states(ledstate *ls);
 
 // void my_interrupt_handler(); // this function is currently in main.c
 
