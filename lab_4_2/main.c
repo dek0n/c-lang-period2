@@ -8,13 +8,20 @@
 // EEPROM Configuration
 #define DEVADDR 0x50
 #define MEMORY_ADDR_LED_STATES 0x7FFE // Second-highest memory address in EEPROM
+#define MEMORY_ADDR_LOG_START 0x0000
+#define MEMORY_ADDR_LOG_END 0x4001 // 16385
 
 // Constants for Bitwise Operations
-#define MASK_8bit_11111111 0xFF
+#define MASK_8B_ALL1 0xFF
 
 // LED and Switch States Structures
 struct LedStates led_states;   // Instance of the LED states structure
 struct SwitchStates sw_states; // Instance of the switch states structure
+
+// void my_interrupt_handler()
+// {
+
+// };
 
 int main()
 {
@@ -37,24 +44,33 @@ int main()
     static struct repeating_timer *ptr_my_timer = &my_timer;
     add_repeating_timer_ms(10, rt_callback_function_sw, ptr_current_sw_states, ptr_my_timer);
 
+    // Interrupts
+    // gpio_set_irq_enabled_with_callback(PIN_SW0, GPIO_IRQ_EDGE_FALL, true, &my_interrupt_handler);
+
     // Initialization of Switch States
     sw_states.sw_changed = false;
 
     // Buffers for I2C to EEPROM write and read
     uint8_t write_buf[4];
+    uint8_t write_buf_log[64];
     uint8_t read_buf[2];
+    uint8_t read_buf_log[64];
 
     // Reading from EEPROM on power-up
-    const uint16_t memory_slot = MEMORY_ADDR_LED_STATES;
-    write_buf[0] = (memory_slot >> 8) & MASK_8bit_11111111; // Memory address divided into two 8-bit parts
-    write_buf[1] = memory_slot & MASK_8bit_11111111;
+    const uint16_t memory_addr_ls = MEMORY_ADDR_LED_STATES;
+    write_buf[0] = (memory_addr_ls >> 8) & MASK_8B_ALL1; // Memory address divided into two 8-bit parts
+    write_buf[1] = memory_addr_ls & MASK_8B_ALL1;
+
+    const uint16_t memory_addr_log = MEMORY_ADDR_LOG_START;
+    write_buf_log[0] = (memory_addr_log >> 8) & MASK_8B_ALL1; // Memory address divided into two 8-bit parts
+    write_buf_log[1] = memory_addr_log & MASK_8B_ALL1;
 
     i2c_write_blocking(i2c0, DEVADDR, write_buf, 2, false);
     i2c_read_blocking(i2c0, DEVADDR, read_buf, 2, false);
     led_states.state = read_buf[1];     // State is the last (task requirement)
     led_states.not_state = read_buf[0]; // Inverse of state goes first
 
-    // Applying starting states
+    // Applying starting states of leds
     if (led_state_is_valid(&led_states)) // Comparing state to inverse state to validate reading from memory; otherwise, default states
     {
         update_leds_from_led_states(&led_states); // Update LEDs
@@ -65,9 +81,25 @@ int main()
         update_leds_from_led_states(&led_states); // Update LEDs
     }
 
-    // Printing initial states
+    // Printing initial states of leds
     print_led_states(&led_states);
     print_time_stamp_s();
+
+
+    // Printing initial log
+
+    i2c_write_blocking(i2c0, DEVADDR, write_buf_log, 2, false);
+    i2c_read_blocking(i2c0, DEVADDR, read_buf_log, 64, false);
+    char string_buf_log[64];
+    size_t string_buf_index = 0;
+    while (read_buf_log[string_buf_index] != 0x00 && string_buf_index < sizeof(read_buf_log) / sizeof(read_buf_log[0]) - 1)
+    {
+        string_buf_log[string_buf_index] = (char)read_buf_log[string_buf_index];
+        string_buf_index++;
+    }
+    string_buf_log[string_buf_index] = '\0'; // Null-terminate the string
+    printf("%s\n", string_buf_log);
+
 
     // Main Loop
     while (true)
@@ -87,6 +119,8 @@ int main()
             led_states.not_state = ~led_states.state;
             write_buf[2] = led_states.not_state; // Inverse state goes first
             i2c_write_blocking(i2c0, DEVADDR, write_buf, 4, false);
+            sleep_ms(10);
+            // i2c_write_blocking(i2c0, DEVADDR, write_buf_log, 64, false);
 
             // Printing states
             print_led_states(&led_states);

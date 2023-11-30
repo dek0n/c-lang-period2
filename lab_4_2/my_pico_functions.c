@@ -1,6 +1,7 @@
 #include "my_pico_definitions.h"
 
-void initialize_pwm_pin(int pin_for_pwm) // Configure PWM for selected pin
+// Configure PWM for selected pin
+void initialize_pwm_pin(int pin_for_pwm)
 {
     uint slice = pwm_gpio_to_slice_num(pin_for_pwm);
     uint channel = pwm_gpio_to_channel(pin_for_pwm);
@@ -14,7 +15,8 @@ void initialize_pwm_pin(int pin_for_pwm) // Configure PWM for selected pin
     pwm_set_enabled(slice, true);
 }
 
-bool rt_callback_function_sw(struct repeating_timer *rt) // Callback function for repeating timer to check status of SWs
+// Callback function for repeating timer to check status of SWs
+bool rt_callback_function_sw(struct repeating_timer *rt)
 {
     struct SwitchStates *ptr_switch_states = (struct SwitchStates *)rt->user_data; // Cast the user_data pointer to struct SwitchStates*
 
@@ -28,7 +30,8 @@ bool rt_callback_function_sw(struct repeating_timer *rt) // Callback function fo
     return true;
 }
 
-void initialize_all_leds() // Initialize all 3 LEDs at once
+// Initialize all 3 LEDs at once
+void initialize_all_leds()
 {
     gpio_init(PIN_LED1);
     gpio_set_dir(PIN_LED1, GPIO_OUT);
@@ -38,7 +41,8 @@ void initialize_all_leds() // Initialize all 3 LEDs at once
     gpio_set_dir(PIN_LED3, GPIO_OUT);
 }
 
-void initialize_all_sw_buttons() // Initialize all 3 SW buttons at once
+// Initialize all 3 SW buttons at once
+void initialize_all_sw_buttons()
 {
     gpio_init(PIN_SW0);
     gpio_set_dir(PIN_SW0, GPIO_IN);
@@ -51,6 +55,7 @@ void initialize_all_sw_buttons() // Initialize all 3 SW buttons at once
     gpio_pull_up(PIN_SW2);
 }
 
+// Trun ON all leds using PWM
 void all_leds_on(int led_brightness)
 {
     pwm_set_gpio_level(PIN_LED1, led_brightness);
@@ -58,6 +63,7 @@ void all_leds_on(int led_brightness)
     pwm_set_gpio_level(PIN_LED3, led_brightness);
 }
 
+// Trun OFF all leds using PWM
 void all_leds_off()
 {
     pwm_set_gpio_level(PIN_LED1, 0);
@@ -65,6 +71,7 @@ void all_leds_off()
     pwm_set_gpio_level(PIN_LED3, 0);
 }
 
+// Process DevEui - converting to lower case string for specific lab
 void process_DevEui(const char *devEuiWithPrefix, char *result)
 {
     const char *devEui = devEuiWithPrefix + strlen("+ID: DevEui, ");
@@ -84,35 +91,42 @@ void process_DevEui(const char *devEuiWithPrefix, char *result)
     result[resultIndex] = '\0';
 }
 
+// Clear UART buffer
 void clear_uart_buffer(uart_inst_t *uart)
 {
     while (uart_is_readable(uart))
         uart_getc(uart);
 }
 
+// Print time stamp ( time from the powerup of system) converting to seconds
 void print_time_stamp_s()
 {
     int x = time_us_64() / 1000000;
     printf("%ds since powerup\n", x);
 }
 
+// Print states of leds from corresponding sttructure's values
 void print_led_states(ledstate *ls)
 {
     printf("| %d | %d | %d | ", (ls->state & 0x01), ((ls->state >> 1) & 0x01), ((ls->state >> 2) & 0x01));
 }
 
-
-bool led_state_is_valid(ledstate *ls) // Validation of stored in EEPROM ledstate by comparing original with inverted.
-{                                     // Typecast to uint8_t is needed for the compare to work correctly because operand of bitwise not gets promoted to an integer. Typecast to 8-bit value discards the extra bits that got added in the promotion.
+// Validation of stored in EEPROM ledstate by comparing original with inverted.
+// Typecast to uint8_t is needed for the compare to work correctly because operand of bitwise not gets promoted to an integer.
+// Typecast to 8-bit value discards the extra bits that got added in the promotion.
+bool led_state_is_valid(ledstate *ls)
+{
     return ls->state == (uint8_t)~ls->not_state;
 }
 
-void set_led_state(ledstate *ls, uint8_t value) // helper function that sets value and inverted value of state in a structure
+// helper function that sets value and inverted value of state in a structure
+void set_led_state(ledstate *ls, uint8_t value)
 {
     ls->state = value;
     ls->not_state = ~value;
 }
 
+// Print uint8_t or similar in binary format
 void print_binary(uint8_t value)
 {
     for (int i = 7; i >= 0; i--)
@@ -122,9 +136,24 @@ void print_binary(uint8_t value)
     printf("\n");
 }
 
+// Updating led's status from corresponding structure's values
 void update_leds_from_led_states(ledstate *ls)
 {
     gpio_put(PIN_LED1, (ls->state & 0x01));
     gpio_put(PIN_LED2, (ls->state >> 1) & 0x01);
     gpio_put(PIN_LED3, (ls->state >> 2) & 0x01);
+}
+
+// CRC-calculation
+uint16_t crc16(const uint8_t *data_p, size_t length)
+{
+    uint8_t x;
+    uint16_t crc = 0xFFFF;
+    while (length--)
+    {
+        x = crc >> 8 ^ *data_p++;
+        x ^= x >> 4;
+        crc = (crc << 8) ^ ((uint16_t)(x << 12)) ^ ((uint16_t)(x << 5)) ^ ((uint16_t)x);
+    }
+    return crc;
 }
