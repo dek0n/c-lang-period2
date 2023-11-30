@@ -10,7 +10,7 @@
 #define MEMORY_ADDR_LED_STATES 0x7FFE // Second-highest memory address in EEPROM
 
 // Constants for Bitwise Operations
-#define MASK_8B_ALL1 0xFF
+#define MASK_8bit_11111111 0xFF
 
 // LED and Switch States Structures
 struct LedStates led_states;   // Instance of the LED states structure
@@ -46,8 +46,8 @@ int main()
 
     // Reading from EEPROM on power-up
     const uint16_t memory_slot = MEMORY_ADDR_LED_STATES;
-    write_buf[0] = (memory_slot >> 8) & MASK_8B_ALL1; // Memory address divided into two 8-bit parts
-    write_buf[1] = memory_slot & MASK_8B_ALL1;
+    write_buf[0] = (memory_slot >> 8) & MASK_8bit_11111111; // Memory address divided into two 8-bit parts
+    write_buf[1] = memory_slot & MASK_8bit_11111111;
 
     i2c_write_blocking(i2c0, DEVADDR, write_buf, 2, false);
     i2c_read_blocking(i2c0, DEVADDR, read_buf, 2, false);
