@@ -46,6 +46,7 @@ target_link_libraries(${PROJECT_NAME}
     hardware_uart
     hardware_gpio
     hardware_irq
+    pico_cyw43_arch_none
 )
 
 # Disable usb output, enable uart output - CMakeLists version fo Pico Probe debugger

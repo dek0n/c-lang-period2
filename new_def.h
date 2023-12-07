@@ -10,7 +10,6 @@
 #include "hardware/pwm.h"
 #include "hardware/uart.h"
 #include "hardware/i2c.h"
-#include "pico/cyw43_arch.h"
 
 // Pins
 #define PIN_LED1 22
@@ -54,6 +53,14 @@ typedef struct LedStates // structure for led states
     uint8_t not_state;
 } ledstate;
 
+typedef union {
+    uint16_t full;
+    struct {
+        uint8_t low;
+        uint8_t high;
+    } bytes;
+} memory_address_union;
+
 // Function initializations
 void initialize_pwm_pin(int pin_for_pwm); // maybe change name
 bool rt_callback_function_sw(struct repeating_timer *rt);
@@ -69,8 +76,6 @@ bool led_state_is_valid(ledstate *ls);
 void set_led_state(ledstate *ls, uint8_t value);
 void print_binary(uint8_t value);
 void update_leds_from_led_states(ledstate *ls);
-
-// void my_interrupt_handler(); // this function is currently in main.c
 
 // GPIO        00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15
 // PWM Channel 0A 0B 1A 1B 2A 2B 3A 3B 4A 4B 5A 5B 6A 6B 7A 7B , A = channel 0, B = channel 1
