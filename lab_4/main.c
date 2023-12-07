@@ -12,61 +12,9 @@
 // Constants for Bitwise Operations
 #define MASK_8B_ALL1 0xFF
 
-// For input
-#define ASCII_SPACE 32
-#define ASCII_ENTER 13
-#define ASCII_BACKSPACE 8
-#define MY_INPUT_DEALY_MS 100
-#define MY_ARRAY_LENGTH 5
-#define MY_ARRAY_READ           \
-    {                           \
-        'r', 'e', 'a', 'd', ' ' \
-    }
-#define MY_ARRAY_ERASE          \
-    {                           \
-        'e', 'r', 'a', 's', 'e' \
-    }
-
 // LED and Switch States Structures
 struct LedStates led_states;   // Instance of the LED states structure
 struct SwitchStates sw_states; // Instance of the switch states structure
-
-bool my_compare_int_arrays(int *array_1, int *array_2, int size)
-{
-    int i;
-    for (i = 0; i < size; ++i)
-    {
-        if (array_1[i] != array_2[i])
-        {
-            break;
-        }
-    }
-    // Check if the loop completed without a difference
-    if (i == 5)
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-
-void print_my_array(int *arr)
-{
-    for (int i = 0; i != MY_ARRAY_LENGTH + 1; i++)
-    {
-        printf("%c", arr[i]);
-    }
-}
-
-void reset_input_array(int *array, int length)
-{
-    for (int i = 0; i < length; ++i)
-    {
-        array[i] = ASCII_SPACE;
-    }
-}
 
 int main()
 {
@@ -124,14 +72,6 @@ int main()
     print_led_states(&led_states);
     print_time_stamp_s();
 
-    // For input handling
-    int my_character;
-    int my_character_array[MY_ARRAY_LENGTH] = {[0 ... 4] = ASCII_SPACE};
-    bool my_input_loop = false;
-    int my_input_index = 0;
-    int my_array_read[] = MY_ARRAY_READ;
-    int my_array_erase[] = MY_ARRAY_ERASE;
-
     // MAIN LOOP LEVEL 1
     while (true)
     {
@@ -175,64 +115,6 @@ int main()
             {
                 led_states.state ^= 0b001; // Inversion of single bit with mask
                 sw_states.sw_changed = true;
-            }
-        }
-
-        // INPUT HANDLING LOOP LEVEL 2
-        my_character = getchar_timeout_us(0);
-        if (my_character != PICO_ERROR_TIMEOUT && my_character != ASCII_ENTER && my_character != ASCII_BACKSPACE)
-        {
-            my_character_array[my_input_index] = my_character;
-            my_input_index++;
-            printf("INPUT MODE:%c", (char)my_character);
-            my_input_loop = true;
-
-            while (my_input_loop)
-            {
-                my_character = getchar_timeout_us(0);
-                if (my_character != PICO_ERROR_TIMEOUT)
-                {
-                    if (my_character == ASCII_ENTER)
-                    {
-                        printf("\n");
-                        if (my_compare_int_arrays(my_character_array, my_array_read, MY_ARRAY_LENGTH))
-                        {
-                            printf("READING LOG...\n");
-                        }
-                        else if (my_compare_int_arrays(my_character_array, my_array_erase, MY_ARRAY_LENGTH))
-                        {
-                            printf("ERASING LOG...\n");
-                        }
-                        else
-                        {
-                            printf("INPUT ERROR! Available commands:'erase','read'.");
-                        }
-                        my_input_loop = false;
-                        printf("\n");
-                        reset_input_array(&my_character_array, MY_ARRAY_LENGTH);
-                        my_input_index = 0;
-                        my_input_loop = false;
-                    }
-
-                    else if (my_character == ASCII_BACKSPACE && my_input_index > 0)
-                    {
-                        my_character_array[my_input_index] = ASCII_SPACE;
-                        printf("\b \b");
-                        my_input_index--;
-                    }
-
-                    else
-                    {
-                        if (my_character != ASCII_BACKSPACE && my_input_index < 5)
-                        {
-
-                            my_character_array[my_input_index] = my_character;
-                            my_input_index++;
-                            printf("%c", (char)my_character);
-                        }
-                    }
-                    sleep_ms(MY_INPUT_DEALY_MS); // delay to reduce CPU usage in input mode
-                }
             }
         }
     }
