@@ -75,18 +75,16 @@ int main()
                         {
                             printf("RUN...\n");
                         }
-                        else if (!strncmp(my_character_array, "run", strlen("run")))
+                        // !!! Modify next not to accept with other symbol after number)
+                        else if (!strncmp(my_character_array, "run ", strlen("run ")) && sscanf(my_character_array + strlen("run "), "%d", &my_number_of_runs))
                         {
-                            if (sscanf(my_character_array + strlen("run"), " %d", &my_number_of_runs))
-                            {
-                                printf("String starts with 'run' and the integer is: %d\n", my_number_of_runs);
-                            }
+                            printf("RUN...%d times\n", my_number_of_runs);
                         }
                         else
                         {
-                            printf("INPUT ERROR! Available commands:'status','run N'(N - number).\n");
-                            printf("Press ENTER for input mode.\n");
+                            printf("INPUT ERROR! Available commands:'status', 'calib', 'run N'. (N - number)\n");
                         }
+                        printf("\nPress ENTER for input mode.\n");
                         // reset_input_array(my_character_array, MY_STRING_LENGTH_MAX);
                         my_input_index = 0;
                         my_input_loop = false;
