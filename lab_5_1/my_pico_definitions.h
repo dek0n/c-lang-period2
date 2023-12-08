@@ -25,6 +25,16 @@
 #define PIN_ROTB 11
 #define PIN_ROT_Push 12
 
+#define PIN_OPTO_FORK 28    // Configure as an input with pull-up
+#define PIN_PIEZO_SENSOR 27 // Configure as an input with pull-up
+
+// o All four pins are outputs
+// o Pins are connected to the stepper motor driver pins IN1 – IN4
+#define PIN_MOTOR_1 2
+#define PIN_MOTOR_2 3
+#define PIN_MOTOR_3 6
+#define PIN_MOTOR_4 13
+
 // For PWM
 #define PWM_CHANNEL_TOP 999         // +1 Determines frequency?
 #define PWM_CHANNEL_COMPARE_LEVEL 0 // Initial compare level of a channel (determines initial brightness)
@@ -45,7 +55,7 @@
 // Other
 #define MAX_LED_BRIGHTNESS (PWM_CHANNEL_TOP + 1) // max compare level of the PIN's PWM from 0 to PWM_COUNTER_WRAP
 
-struct SwitchStates // structure for sw buttons states
+    struct SwitchStates // structure for sw buttons states
 {
     int switch0;
     int switch1;
