@@ -36,7 +36,7 @@
 #define PIN_MOTOR_2 3
 #define PIN_MOTOR_3 6
 #define PIN_MOTOR_4 13
-#define MOTOR_STEP_DELAY_US 5000
+#define MOTOR_STEP_DELAY_US 1000
 
 // UART
 #define UART_TX_PIN 0

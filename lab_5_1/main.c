@@ -6,7 +6,8 @@
 #define ASCII_BACKSPACE 8
 #define ASCII_ESC 27
 #define MY_STRING_LENGTH_MAX 10
-
+#define NUMBER_OF_RUNS_DEF 8
+#define CALIBRATION_ROUNDS 3
 typedef enum
 {
     STATE_IDLE = 1,
@@ -115,7 +116,7 @@ int main()
     int my_character_int;
     char my_character_array[MY_STRING_LENGTH_MAX];
     int my_input_index = 0;
-    int my_number_of_runs = 8; // default number of runs is 8
+    int my_number_of_runs = NUMBER_OF_RUNS_DEF;
     int my_number_of_steps = -1;
     // bool opto_fork_reached_end = false;
 
@@ -133,6 +134,8 @@ int main()
         case STATE_IDLE:
             // Cleaning input buffer
             clean_getchar_buffer();
+            // Setting number of runs to default
+            my_number_of_runs = NUMBER_OF_RUNS_DEF;
             // turning input interrupt  ON
             gpio_set_irq_enabled_with_callback(UART_RX_PIN, GPIO_IRQ_EDGE_RISE, true, &my_interrupt_handler_input_mode);
             while (program_state == STATE_IDLE)
@@ -171,14 +174,13 @@ int main()
                         }
                         else if (!strcmp(my_character_array, "run"))
                         {
-                            printf("RUNNING...\n");
+                            printf("RUNNING %d * 1/8 REVOLUTIONS...\n", my_number_of_runs);
                             program_state = STATE_RUN;
                         }
                         // !!! Modify next to not accept with other symbol after number)
                         else if (!strncmp(my_character_array, "run ", strlen("run ")) && sscanf(my_character_array + strlen("run "), "%d", &my_number_of_runs))
                         {
-                            printf("RUN...%d times\n", my_number_of_runs);
-
+                            printf("RUNNING %d * 1/8 REVOLUTIONS...\n", my_number_of_runs);
                             program_state = STATE_RUN;
                         }
                         else
@@ -228,21 +230,37 @@ int main()
                 perform_step();
             }
             // opto fork reached end starting to count until next end of it
-            while (!gpio_get(PIN_OPTO_FORK))
+            // Calibratinf CALIBRATON_ROUNDS times and findinf average
+            for (int i = 0; i != CALIBRATION_ROUNDS; i++)
             {
-                perform_step();
-                my_number_of_steps++;
+                while (!gpio_get(PIN_OPTO_FORK))
+                {
+                    perform_step();
+                    my_number_of_steps++;
+                }
+                while (gpio_get(PIN_OPTO_FORK))
+                {
+                    perform_step();
+                    my_number_of_steps++;
+                }
             }
-            while (gpio_get(PIN_OPTO_FORK))
-            {
-                perform_step();
-                my_number_of_steps++;
-            }
+            my_number_of_steps = my_number_of_steps / CALIBRATION_ROUNDS;
             program_state = STATE_IDLE;
             printf("Calibrated with %d steps per revolution.\n", my_number_of_steps);
             break;
 
         case STATE_RUN:
+            if (my_number_of_steps > 0)
+            {
+                for (int i = 0; i != my_number_of_steps * my_number_of_runs / NUMBER_OF_RUNS_DEF; i++)
+                {
+                    perform_step();
+                }
+            }
+            else
+            {
+                printf("ERROR! NOT CALIBRATED. CALIBRATE with 'calib' command");
+            }
             program_state = STATE_IDLE;
             break;
         }
