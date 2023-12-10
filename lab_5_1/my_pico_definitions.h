@@ -2,6 +2,7 @@
 #include <math.h>
 #include <string.h>
 #include <ctype.h>
+
 // Pico SDK includes
 #include "pico/stdlib.h"
 #include "pico/time.h"
@@ -27,7 +28,7 @@
 #define PIN_ROTB 11
 #define PIN_ROT_Push 12
 
-// Motor
+// Motor settings
 #define PIN_OPTO_FORK 28    // Configure as an input with pull-up
 #define PIN_PIEZO_SENSOR 27 // Configure as an input with pull-up
 // o All four pins are outputs
@@ -36,7 +37,8 @@
 #define PIN_MOTOR_2 3
 #define PIN_MOTOR_3 6
 #define PIN_MOTOR_4 13
-#define MOTOR_STEP_DELAY_US 1000
+#define MOTOR_STEP_DELAY_US 1000 // determines speed of the motor
+
 
 // UART
 #define UART_TX_PIN 0
@@ -58,6 +60,13 @@
 
 // Constants for Bitwise Operations
 #define MASK_8B_ALL1 0xFF
+
+// For INPUT
+#define ASCII_SPACE 32
+#define ASCII_ENTER 13
+#define ASCII_BACKSPACE 8
+#define ASCII_ESC 27
+#define MY_STRING_LENGTH_MAX 10
 
 // Other
 #define MAX_LED_BRIGHTNESS (PWM_CHANNEL_TOP + 1) // max compare level of the PIN's PWM from 0 to PWM_COUNTER_WRAP

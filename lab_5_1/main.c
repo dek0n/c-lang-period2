@@ -1,22 +1,22 @@
 #include "my_pico_definitions.h"
 
-// For input
-#define ASCII_SPACE 32
-#define ASCII_ENTER 13
-#define ASCII_BACKSPACE 8
-#define ASCII_ESC 27
-#define MY_STRING_LENGTH_MAX 10
-#define NUMBER_OF_RUNS_DEF 8
-#define CALIBRATION_ROUNDS 3
+#define NUMBER_OF_RUNS_DEF 8 // default number of runs *1/8 of full rotation
+#define CALIBRATION_ROUNDS 3 // number of calibration full rotations
+
+#define CMD_STATUS "status"
+#define CMD_CALIB "calib"
+#define CMD_RUN "run"
+#define GETCHAR_TIMEOUT_US 0 // small timeout (5) may needed for working with interrupt handler, now testing without it
+
 typedef enum
 {
     STATE_IDLE = 1,
     STATE_INPUT = 2,
     STATE_CALIBRATION = 3,
     STATE_RUN = 4,
-} State;
+} ProgramStatesLab5;
 
-enum MotorState
+typedef enum
 {
     STATE_1,
     STATE_2,
@@ -26,12 +26,12 @@ enum MotorState
     STATE_6,
     STATE_7,
     STATE_8
-};
+} MotorStates8HalfSteps;
 
 // Globals
 bool my_input_toggle = false;
-State program_state = STATE_IDLE;
-enum MotorState current_motor_state = STATE_1;
+ProgramStatesLab5 program_state = STATE_IDLE;
+MotorStates8HalfSteps current_motor_state = STATE_1;
 
 // Interrupt handler for input mode
 void my_interrupt_handler_input_mode()
@@ -124,13 +124,14 @@ int main()
     gpio_set_irq_enabled_with_callback(UART_RX_PIN, GPIO_IRQ_EDGE_RISE, true, &my_interrupt_handler_input_mode);
 
     // Printing first instructions
-    printf("\nStart typing for input mode. Available commands: 'status', 'calib', 'run N'. (N - number)\n");
-
+    printf("\n***Input commands: 'status', 'calib' or 'run N'. (N - number)***\n");
     // MAIN LOOP
     while (true)
     {
-        switch (program_state)
+
+        switch (program_state) // SWITCH for program sates
         {
+
         case STATE_IDLE:
             // Cleaning input buffer
             clean_getchar_buffer();
@@ -144,18 +145,20 @@ int main()
             // turning input interrupt  OFF
             gpio_set_irq_enabled_with_callback(UART_RX_PIN, GPIO_IRQ_EDGE_RISE, false, &my_interrupt_handler_input_mode);
             break;
+
         case STATE_INPUT:
             // Input mode toggled by interrupt
             while (my_input_toggle)
             {
-                my_character = my_character_int = getchar_timeout_us(5);
+                my_character = my_character_int = getchar_timeout_us(GETCHAR_TIMEOUT_US);
                 if (my_character_int != PICO_ERROR_TIMEOUT)
                 {
-                    if (my_character_int == ASCII_ENTER)
+                    switch (my_character_int) // SWITCH (nested) for different input characters
                     {
+                    case ASCII_ENTER:
                         my_character_array[my_input_index] = '\0';
                         printf("\n");
-                        if (!strcmp(my_character_array, "status"))
+                        if (!strcmp(my_character_array, CMD_STATUS))
                         {
                             if (my_number_of_steps < 0)
                             {
@@ -167,21 +170,34 @@ int main()
                             }
                             program_state = STATE_IDLE;
                         }
-                        else if (!strcmp(my_character_array, "calib"))
+                        else if (!strcmp(my_character_array, CMD_CALIB))
                         {
                             printf("CALIBRATION... (Input is not available)\n");
                             program_state = STATE_CALIBRATION;
                         }
-                        else if (!strcmp(my_character_array, "run"))
+                        else if (!strcmp(my_character_array, CMD_RUN))
                         {
-                            printf("RUNNING %d * 1/8 REVOLUTIONS...\n", my_number_of_runs);
                             program_state = STATE_RUN;
                         }
-                        // !!! Modify next to not accept with other symbol after number)
-                        else if (!strncmp(my_character_array, "run ", strlen("run ")) && sscanf(my_character_array + strlen("run "), "%d", &my_number_of_runs))
+                        else if (!strcmp(my_character_array, CMD_RUN " "))
                         {
-                            printf("RUNNING %d * 1/8 REVOLUTIONS...\n", my_number_of_runs);
                             program_state = STATE_RUN;
+                        }
+                        else if (!strncmp(my_character_array, CMD_RUN " ", strlen(CMD_RUN " ")))
+                        {
+                            char extra;
+                            int parseResult = sscanf(my_character_array + strlen(CMD_RUN " "), "%d%c", &my_number_of_runs, &extra);
+
+                            // Check if sscanf successfully parsed one integer and did not find any extra characters
+                            if (parseResult == 1)
+                            {
+                                program_state = STATE_RUN;
+                            }
+                            else
+                            {
+                                printf("INPUT ERROR!\n");
+                                program_state = STATE_IDLE;
+                            }
                         }
                         else
                         {
@@ -190,35 +206,45 @@ int main()
                         }
                         my_input_index = 0;
                         my_input_toggle = false;
-                    }
+                        break;
 
-                    else if (my_character_int == ASCII_ESC)
-                    {
-                        printf("\nExited from input mode.\n");
+                    case ASCII_ESC:
+                        if (my_input_index > 0)
+                        {
+                            printf("\r");
+                            for (int i = 0; i < my_input_index; i++)
+                            {
+                                printf(" ");
+                            }
+                            printf("\r");
+                        }
                         my_input_index = 0;
                         my_input_toggle = false;
                         program_state = STATE_IDLE;
-                    }
+                        break;
 
-                    else if (my_character_int == ASCII_BACKSPACE && my_input_index > 0)
-                    {
-                        my_character_array[my_input_index] = ' ';
-                        my_input_index--;
-                        printf("\b \b");
-                    }
+                    case ASCII_BACKSPACE:
+                        if (my_input_index > 0)
+                        {
+                            my_character_array[my_input_index] = ' ';
+                            my_input_index--;
+                            printf("\b \b");
+                        }
+                        break;
 
-                    else
-                    {
+                    default:
                         if (my_character_int != ASCII_BACKSPACE && my_input_index < MY_STRING_LENGTH_MAX)
                         {
                             my_character_array[my_input_index] = my_character;
                             my_input_index++;
                             printf("%c", (char)my_character);
                         }
+                        break;
                     }
                 }
             }
             break;
+
         case STATE_CALIBRATION:
             my_number_of_steps = 0;
             while (!gpio_get(PIN_OPTO_FORK))
@@ -229,8 +255,8 @@ int main()
             {
                 perform_step();
             }
-            // opto fork reached end starting to count until next end of it
-            // Calibratinf CALIBRATON_ROUNDS times and findinf average
+            // opto fork has reached end, starting to count until next end of it
+            // Calibrating CALIBRATON_ROUNDS times and finding average
             for (int i = 0; i != CALIBRATION_ROUNDS; i++)
             {
                 while (!gpio_get(PIN_OPTO_FORK))
@@ -252,6 +278,7 @@ int main()
         case STATE_RUN:
             if (my_number_of_steps > 0)
             {
+                printf("RUNNING %d * 1/8 REVOLUTIONS...\n", my_number_of_runs);
                 for (int i = 0; i != my_number_of_steps * my_number_of_runs / NUMBER_OF_RUNS_DEF; i++)
                 {
                     perform_step();
@@ -259,7 +286,7 @@ int main()
             }
             else
             {
-                printf("ERROR! NOT CALIBRATED. CALIBRATE with 'calib' command");
+                printf("ERROR! NOT CALIBRATED. CALIBRATE with 'calib' command\n");
             }
             program_state = STATE_IDLE;
             break;
