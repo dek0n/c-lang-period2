@@ -7,21 +7,6 @@
 #define ASCII_ESC 27
 #define MY_STRING_LENGTH_MAX 10
 
-// Globals
-bool my_input_toggle = false;
-State program_state = STATE_IDLE;
-enum MotorState current_motor_state = STATE_1;
-
-// Interrupt handler for input mode
-void my_interrupt_handler_input_mode()
-{
-    if (!my_input_toggle)
-    {
-        my_input_toggle = true;
-        program_state = STATE_IDLE;
-    }
-}
-
 typedef enum
 {
     STATE_IDLE = 1,
@@ -41,6 +26,21 @@ enum MotorState
     STATE_7,
     STATE_8
 };
+
+// Globals
+bool my_input_toggle = false;
+State program_state = STATE_IDLE;
+enum MotorState current_motor_state = STATE_1;
+
+// Interrupt handler for input mode
+void my_interrupt_handler_input_mode()
+{
+    if (!my_input_toggle)
+    {
+        my_input_toggle = true;
+        program_state = STATE_INPUT;
+    }
+}
 
 void half_step_sequence()
 {
@@ -117,7 +117,7 @@ int main()
     int my_input_index = 0;
     int my_number_of_runs = 8; // default number of runs is 8
     int my_number_of_steps = -1;
-    bool opto_fork_status;
+    // bool opto_fork_reached_end = false;
 
     // Interrupts
     gpio_set_irq_enabled_with_callback(UART_RX_PIN, GPIO_IRQ_EDGE_RISE, true, &my_interrupt_handler_input_mode);
@@ -128,14 +128,18 @@ int main()
     // MAIN LOOP
     while (true)
     {
-
         switch (program_state)
         {
         case STATE_IDLE:
-            while (1)
+            // Cleaning input buffer
+            clean_getchar_buffer();
+            // turning input interrupt  ON
+            gpio_set_irq_enabled_with_callback(UART_RX_PIN, GPIO_IRQ_EDGE_RISE, true, &my_interrupt_handler_input_mode);
+            while (program_state == STATE_IDLE)
             {
-                // idle
             }
+            // turning input interrupt  OFF
+            gpio_set_irq_enabled_with_callback(UART_RX_PIN, GPIO_IRQ_EDGE_RISE, false, &my_interrupt_handler_input_mode);
             break;
         case STATE_INPUT:
             // Input mode toggled by interrupt
@@ -156,13 +160,13 @@ int main()
                             }
                             else
                             {
-                                printf("Calibrated with %d steps per revolution.", my_number_of_steps);
+                                printf("Calibrated with %d steps per revolution.\n", my_number_of_steps);
                             }
                             program_state = STATE_IDLE;
                         }
                         else if (!strcmp(my_character_array, "calib"))
                         {
-                            printf("CALIBRATION...\n");
+                            printf("CALIBRATION... (Input is not available)\n");
                             program_state = STATE_CALIBRATION;
                         }
                         else if (!strcmp(my_character_array, "run"))
@@ -214,15 +218,31 @@ int main()
             }
             break;
         case STATE_CALIBRATION:
-            if (!gpio_get(PIN_OPTO_FORK))
+            my_number_of_steps = 0;
+            while (!gpio_get(PIN_OPTO_FORK))
             {
+                perform_step();
             }
-            opto_fork_status = true;
+            while (gpio_get(PIN_OPTO_FORK))
+            {
+                perform_step();
+            }
+            // opto fork reached end starting to count until next end of it
+            while (!gpio_get(PIN_OPTO_FORK))
+            {
+                perform_step();
+                my_number_of_steps++;
+            }
+            while (gpio_get(PIN_OPTO_FORK))
+            {
+                perform_step();
+                my_number_of_steps++;
+            }
             program_state = STATE_IDLE;
+            printf("Calibrated with %d steps per revolution.\n", my_number_of_steps);
             break;
 
         case STATE_RUN:
-            motor_steps_full(my_number_of_runs);
             program_state = STATE_IDLE;
             break;
         }

@@ -101,6 +101,7 @@ void update_leds_from_led_states(ledstate *ls);
 void my_configure_motor();
 void motor_turn_off_coils();
 void motor_step(int in1, int in2, int in3, int in4);
+void clean_getchar_buffer();
 
 // void my_interrupt_handler(); // this function is currently in main.c
 

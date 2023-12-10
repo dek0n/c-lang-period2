@@ -170,3 +170,16 @@ void motor_step(int in1, int in2, int in3, int in4)
     gpio_put(PIN_MOTOR_4, in4);
     busy_wait_us(MOTOR_STEP_DELAY_US);
 }
+
+void clean_getchar_buffer()
+{
+    while (1)
+    {
+        int c = getchar_timeout_us(0);
+
+        if (c == PICO_ERROR_TIMEOUT || c == PICO_ERROR_GENERIC)
+        {
+            break; // Exit the loop when there are no more characters to read
+        }
+    }
+}
