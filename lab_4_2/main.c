@@ -1,76 +1,37 @@
 #include "my_pico_definitions.h"
 
-// I2C Configuration
-#define MY_I2C_BAUD_RATE 100000
-#define I2C0_SDA_PIN 16
-#define I2C0_SCL_PIN 17
+#define CMD_READ "read"
+#define CMD_ERASE "erase"
+#define GETCHAR_TIMEOUT_US 0 // small timeout (5) may needed for working with interrupt handler, now testing without it
 
-// EEPROM Configuration
-#define DEVADDR 0x50
-#define MEMORY_ADDR_LED_STATES 0x7FFE // Second-highest memory address in EEPROM
+typedef enum
+{
+    STATE_IDLE = 1,
+    STATE_INPUT = 2,
+    STATE_READ = 3,
+    STATE_ERASE = 4,
+} ProgramStatesLab5;
 
-// Constants for Bitwise Operations
-#define MASK_8B_ALL1 0xFF
+// Globals
+bool my_input_toggle = false;
+ProgramStatesLab5 program_state = STATE_IDLE;
 
-// For input
-#define ASCII_SPACE 32
-#define ASCII_ENTER 13
-#define ASCII_BACKSPACE 8
-#define MY_INPUT_DEALY_MS 100
-#define MY_ARRAY_LENGTH 5
-#define MY_ARRAY_READ           \
-    {                           \
-        'r', 'e', 'a', 'd', ' ' \
+// Interrupt handler for input mode
+void my_interrupt_handler_input_mode()
+{
+    if (!my_input_toggle)
+    {
+        my_input_toggle = true;
+        program_state = STATE_INPUT;
     }
-#define MY_ARRAY_ERASE          \
-    {                           \
-        'e', 'r', 'a', 's', 'e' \
-    }
+}
 
 // LED and Switch States Structures
 struct LedStates led_states;   // Instance of the LED states structure
 struct SwitchStates sw_states; // Instance of the switch states structure
 
-bool my_compare_int_arrays(int *array_1, int *array_2, int size)
-{
-    int i;
-    for (i = 0; i < size; ++i)
-    {
-        if (array_1[i] != array_2[i])
-        {
-            break;
-        }
-    }
-    // Check if the loop completed without a difference
-    if (i == 5)
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-
-void print_my_array(int *arr)
-{
-    for (int i = 0; i != MY_ARRAY_LENGTH + 1; i++)
-    {
-        printf("%c", arr[i]);
-    }
-}
-
-void reset_input_array(int *array, int length)
-{
-    for (int i = 0; i < length; ++i)
-    {
-        array[i] = ASCII_SPACE;
-    }
-}
-
 int main()
 {
-
     // Initialization
     stdio_init_all();
     initialize_all_sw_buttons();
@@ -82,6 +43,15 @@ int main()
     gpio_set_function(I2C0_SCL_PIN, GPIO_FUNC_I2C);
     gpio_pull_up(I2C0_SDA_PIN);
     gpio_pull_up(I2C0_SCL_PIN);
+
+    // Variables
+    char my_character;
+    int my_character_int;
+    char my_character_array[MY_STRING_LENGTH_MAX];
+    int my_input_index = 0;
+
+    // Interrupts
+    gpio_set_irq_enabled_with_callback(UART_RX_PIN, GPIO_IRQ_EDGE_RISE, true, &my_interrupt_handler_input_mode);
 
     // Timer for updating states buttons
     void *ptr_current_sw_states = &sw_states;
@@ -124,115 +94,144 @@ int main()
     print_led_states(&led_states);
     print_time_stamp_s();
 
-    // For input handling
-    int my_character;
-    int my_character_array[MY_ARRAY_LENGTH] = {[0 ... 4] = ASCII_SPACE};
-    bool my_input_loop = false;
-    int my_input_index = 0;
-    int my_array_read[] = MY_ARRAY_READ;
-    int my_array_erase[] = MY_ARRAY_ERASE;
-
-    // MAIN LOOP LEVEL 1
+    // MAIN LOOP
     while (true)
     {
-        // Updating toggle on release of a button
-        if (sw_states.switch0 && sw_states.switch1 && sw_states.switch2)
+
+        switch (program_state) // SWITCH for program sates
         {
-            sw_states.sw_all_toggle = true;
-        }
-
-        if (sw_states.sw_changed)
-        {
-            update_leds_from_led_states(&led_states); // Update LEDs
-
-            // Writing new states to EEPROM
-            write_buf[3] = led_states.state; // State is the last (task requirement)
-            led_states.not_state = ~led_states.state;
-            write_buf[2] = led_states.not_state; // Inverse state goes first
-            i2c_write_blocking(i2c0, DEVADDR, write_buf, 4, false);
-
-            // Printing states
-            print_led_states(&led_states);
-            print_time_stamp_s();
-
-            sw_states.sw_changed = false;
-        }
-
-        if (sw_states.sw_all_toggle && (!sw_states.switch0 || !sw_states.switch1 || !sw_states.switch2))
-        {
-            sw_states.sw_all_toggle = false;
-            if (!sw_states.switch0 && !sw_states.sw_changed)
+        case STATE_IDLE:
+            // Cleaning input buffer
+            clean_getchar_buffer();
+            // turning input interrupt  ON
+            gpio_set_irq_enabled_with_callback(UART_RX_PIN, GPIO_IRQ_EDGE_RISE, true, &my_interrupt_handler_input_mode);
+            while (program_state == STATE_IDLE)
             {
-                led_states.state ^= 0b100; // Inversion of single bit with mask
-                sw_states.sw_changed = true;
-            }
-            if (!sw_states.switch1 && !sw_states.sw_changed)
-            {
-                led_states.state ^= 0b010; // Inversion of single bit with mask
-                sw_states.sw_changed = true;
-            }
-            if (!sw_states.switch2 && !sw_states.sw_changed)
-            {
-                led_states.state ^= 0b001; // Inversion of single bit with mask
-                sw_states.sw_changed = true;
-            }
-        }
-
-        // INPUT HANDLING LOOP LEVEL 2
-        my_character = getchar_timeout_us(0);
-        if (my_character != PICO_ERROR_TIMEOUT && my_character != ASCII_ENTER && my_character != ASCII_BACKSPACE)
-        {
-            my_character_array[my_input_index] = my_character;
-            my_input_index++;
-            printf("INPUT MODE:%c", (char)my_character);
-            my_input_loop = true;
-
-            while (my_input_loop)
-            {
-                my_character = getchar_timeout_us(0);
-                if (my_character != PICO_ERROR_TIMEOUT)
+                // Updating toggle on release of a button
+                if (sw_states.switch0 && sw_states.switch1 && sw_states.switch2)
                 {
-                    if (my_character == ASCII_ENTER)
+                    sw_states.sw_all_toggle = true;
+                }
+
+                // On change of states actions:
+                if (sw_states.sw_changed)
+                {
+                    update_leds_from_led_states(&led_states); // Update LEDs
+
+                    // Writing new states to EEPROM
+                    write_buf[3] = led_states.state; // State is the last (task requirement)
+                    led_states.not_state = ~led_states.state;
+                    write_buf[2] = led_states.not_state; // Inverse state goes before the last
+                    i2c_write_blocking(i2c0, DEVADDR, write_buf, 4, false);
+
+                    // Printing states
+                    print_led_states(&led_states);
+                    print_time_stamp_s();
+
+                    sw_states.sw_changed = false;
+                }
+
+                // Changing states
+                if (sw_states.sw_all_toggle && (!sw_states.switch0 || !sw_states.switch1 || !sw_states.switch2))
+                {
+                    sw_states.sw_all_toggle = false;
+                    if (!sw_states.switch0 && !sw_states.sw_changed)
                     {
+                        led_states.state ^= 0b100; // Inversion of single bit with mask
+                    }
+                    if (!sw_states.switch1 && !sw_states.sw_changed)
+                    {
+                        led_states.state ^= 0b010; // Inversion of single bit with mask
+                    }
+                    if (!sw_states.switch2 && !sw_states.sw_changed)
+                    {
+                        led_states.state ^= 0b001; // Inversion of single bit with mask
+                    }
+                    sw_states.sw_changed = true;
+                }
+                break;
+            }
+            // turning input interrupt OFF
+            gpio_set_irq_enabled_with_callback(UART_RX_PIN, GPIO_IRQ_EDGE_RISE, false, &my_interrupt_handler_input_mode);
+            break;
+
+        case STATE_INPUT:
+            // Input mode toggled by interrupt
+            while (my_input_toggle)
+            {
+                my_character = my_character_int = getchar_timeout_us(GETCHAR_TIMEOUT_US);
+                if (my_character_int != PICO_ERROR_TIMEOUT)
+                {
+                    switch (my_character_int) // SWITCH (nested) for different input characters
+                    {
+                    case ASCII_ENTER:
+                        my_character_array[my_input_index] = '\0';
                         printf("\n");
-                        if (my_compare_int_arrays(my_character_array, my_array_read, MY_ARRAY_LENGTH))
+                        if (!strcmp(my_character_array, CMD_READ))
                         {
-                            printf("READING LOG...\n");
+
+                            program_state = STATE_READ;
                         }
-                        else if (my_compare_int_arrays(my_character_array, my_array_erase, MY_ARRAY_LENGTH))
+                        else if (!strcmp(my_character_array, CMD_ERASE))
                         {
-                            printf("ERASING LOG...\n");
+
+                            program_state = STATE_ERASE;
                         }
                         else
                         {
-                            printf("INPUT ERROR! Available commands:'erase','read'.\n");
+                            printf("INPUT ERROR!\n");
+                            program_state = STATE_IDLE;
                         }
-                        my_input_loop = false;
-                        reset_input_array(my_character_array, MY_ARRAY_LENGTH);
                         my_input_index = 0;
-                        my_input_loop = false;
-                    }
+                        my_input_toggle = false;
+                        break;
 
-                    else if (my_character == ASCII_BACKSPACE && my_input_index > 0)
-                    {
-                        my_character_array[my_input_index] = ASCII_SPACE;
-                        printf("\b \b");
-                        my_input_index--;
-                    }
-
-                    else
-                    {
-                        if (my_character != ASCII_BACKSPACE && my_input_index < 5)
+                    case ASCII_ESC:
+                        if (my_input_index > 0)
                         {
+                            printf("\r");
+                            for (int i = 0; i < my_input_index; i++)
+                            {
+                                printf(" ");
+                            }
+                            printf("\r");
+                        }
+                        my_input_index = 0;
+                        my_input_toggle = false;
+                        program_state = STATE_IDLE;
+                        break;
 
+                    case ASCII_BACKSPACE:
+                        if (my_input_index > 0)
+                        {
+                            my_character_array[my_input_index] = ' ';
+                            my_input_index--;
+                            printf("\b \b");
+                        }
+                        break;
+
+                    default:
+                        if (my_character_int != ASCII_BACKSPACE && my_input_index < MY_STRING_LENGTH_MAX)
+                        {
                             my_character_array[my_input_index] = my_character;
                             my_input_index++;
                             printf("%c", (char)my_character);
                         }
+                        break;
                     }
-                    sleep_ms(MY_INPUT_DEALY_MS); // delay to reduce CPU usage in input mode
                 }
             }
+            break;
+
+        case STATE_READ:
+            printf("Read\n");
+            program_state = STATE_IDLE;
+            break;
+
+        case STATE_ERASE:
+            printf("Erase\n");
+            program_state = STATE_IDLE;
+            break;
         }
     }
 }

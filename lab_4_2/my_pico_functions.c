@@ -101,7 +101,6 @@ void print_led_states(ledstate *ls)
     printf("| %d | %d | %d | ", (ls->state & 0x01), ((ls->state >> 1) & 0x01), ((ls->state >> 2) & 0x01));
 }
 
-
 bool led_state_is_valid(ledstate *ls) // Validation of stored in EEPROM ledstate by comparing original with inverted.
 {                                     // Typecast to uint8_t is needed for the compare to work correctly because operand of bitwise not gets promoted to an integer. Typecast to 8-bit value discards the extra bits that got added in the promotion.
     return ls->state == (uint8_t)~ls->not_state;
@@ -127,4 +126,60 @@ void update_leds_from_led_states(ledstate *ls)
     gpio_put(PIN_LED1, (ls->state & 0x01));
     gpio_put(PIN_LED2, (ls->state >> 1) & 0x01);
     gpio_put(PIN_LED3, (ls->state >> 2) & 0x01);
+}
+
+void my_configure_motor()
+{
+    // Configure MOTOR
+    gpio_init(PIN_OPTO_FORK);
+    gpio_set_dir(PIN_OPTO_FORK, GPIO_IN);
+    gpio_pull_up(PIN_OPTO_FORK);
+
+    gpio_init(PIN_PIEZO_SENSOR);
+    gpio_set_dir(PIN_PIEZO_SENSOR, GPIO_IN);
+    gpio_pull_up(PIN_PIEZO_SENSOR);
+
+    gpio_init(PIN_MOTOR_1);
+    gpio_set_dir(PIN_MOTOR_1, GPIO_OUT);
+
+    gpio_init(PIN_MOTOR_2);
+    gpio_set_dir(PIN_MOTOR_2, GPIO_OUT);
+
+    gpio_init(PIN_MOTOR_3);
+    gpio_set_dir(PIN_MOTOR_3, GPIO_OUT);
+
+    gpio_init(PIN_MOTOR_4);
+    gpio_set_dir(PIN_MOTOR_4, GPIO_OUT);
+}
+
+void motor_turn_off_coils()
+{
+
+    gpio_put(PIN_MOTOR_1, 0);
+    gpio_put(PIN_MOTOR_2, 0);
+    gpio_put(PIN_MOTOR_3, 0);
+    gpio_put(PIN_MOTOR_4, 0);
+}
+
+void motor_step(int in1, int in2, int in3, int in4)
+{
+
+    gpio_put(PIN_MOTOR_1, in1);
+    gpio_put(PIN_MOTOR_2, in2);
+    gpio_put(PIN_MOTOR_3, in3);
+    gpio_put(PIN_MOTOR_4, in4);
+    busy_wait_us(MOTOR_STEP_DELAY_US);
+}
+
+void clean_getchar_buffer()
+{
+    while (1)
+    {
+        int c = getchar_timeout_us(0);
+
+        if (c == PICO_ERROR_TIMEOUT || c == PICO_ERROR_GENERIC)
+        {
+            break; // Exit the loop when there are no more characters to read
+        }
+    }
 }
