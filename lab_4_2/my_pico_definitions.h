@@ -2,6 +2,7 @@
 #include <math.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdlib.h>
 
 // Pico SDK includes
 #include "pico/stdlib.h"
@@ -57,6 +58,10 @@
 // EEPROM Configuration
 #define DEVADDR 0x50
 #define MEMORY_ADDR_LED_STATES 0x7FFE // Second-highest memory address in EEPROM
+#define MEMORY_ADDR_LOG_START 0x000 
+#define MEMORY_ADDR_LOG_END 0x800 
+#define MEMORY_SIZE_LOG_ENTRY 0x40 
+#define MEMORY_NUMBER_OF_ENTIRES_MAX 0x20 
 
 // Constants for Bitwise Operations
 #define MASK_8B_ALL1 0xFF
@@ -111,6 +116,10 @@ void my_configure_motor();
 void motor_turn_off_coils();
 void motor_step(int in1, int in2, int in3, int in4);
 void clean_getchar_buffer();
+uint16_t crc16(const uint8_t *data_p, size_t length);
+void write_to_log(char * string);
+void erase_log();
+char *form_led_states(ledstate *ls);
 
 // void my_interrupt_handler(); // this function is currently in main.c
 

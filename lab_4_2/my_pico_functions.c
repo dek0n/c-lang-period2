@@ -101,6 +101,19 @@ void print_led_states(ledstate *ls)
     printf("| %d | %d | %d | ", (ls->state & 0x01), ((ls->state >> 1) & 0x01), ((ls->state >> 2) & 0x01));
 }
 
+char *form_led_states(ledstate *ls)
+{
+    int x = time_us_64() / 1000000;
+    char *string = (char *)malloc(61 * sizeof(char)); // Allocate memory
+    if (string == NULL)
+    {
+        // Handle allocation failure if needed
+        return NULL;
+    }
+    sprintf(string, "| %d | %d | %d | %ds since powerup.", (ls->state & 0x01), ((ls->state >> 1) & 0x01), ((ls->state >> 2) & 0x01), x);
+    return string;
+}
+
 bool led_state_is_valid(ledstate *ls) // Validation of stored in EEPROM ledstate by comparing original with inverted.
 {                                     // Typecast to uint8_t is needed for the compare to work correctly because operand of bitwise not gets promoted to an integer. Typecast to 8-bit value discards the extra bits that got added in the promotion.
     return ls->state == (uint8_t)~ls->not_state;
@@ -181,5 +194,97 @@ void clean_getchar_buffer()
         {
             break; // Exit the loop when there are no more characters to read
         }
+    }
+}
+
+uint16_t crc16(const uint8_t *data_p, size_t length)
+{
+    uint8_t x;
+    uint16_t crc = 0xFFFF;
+    while (length--)
+    {
+        x = crc >> 8 ^ *data_p++;
+        x ^= x >> 4;
+        crc = (crc << 8) ^ ((uint16_t)(x << 12)) ^ ((uint16_t)(x << 5)) ^ ((uint16_t)x);
+    }
+    return crc;
+}
+
+void write_to_log(char *string)
+{
+    if (strlen(string) > 61)
+    {
+        printf("String Error.\n");
+    }
+    else
+    {
+        bool entry_done = false;
+        uint16_t memory_slot = MEMORY_ADDR_LOG_START;
+        uint8_t buffer[2];
+        uint8_t memory_slot_status;
+        uint8_t log_entry[66];
+        uint8_t read_buf[1];
+        while (!entry_done)
+        {
+
+            buffer[0] = memory_slot >> 8;
+            buffer[1] = memory_slot;
+            i2c_write_blocking(i2c0, DEVADDR, buffer, sizeof(buffer), false);
+
+            // reading if the address is empty
+            i2c_read_blocking(i2c0, DEVADDR, read_buf, 1, false);
+            memory_slot_status = read_buf[0];
+
+            // if address is empty write entry there
+            if (memory_slot_status == 0)
+            {
+                log_entry[0] = memory_slot >> 8;
+                log_entry[1] = memory_slot;
+                int string_length = strlen(string);
+
+                // Start copying the string to log_entry at index 3
+                for (int i = 0; i < string_length; i++)
+                {
+                    log_entry[i + 2] = string[i];
+                }
+                log_entry[string_length + 2] = '0';  // Add CRC!
+                log_entry[string_length + 3] = '0';  // Add CRC!
+                log_entry[string_length + 4] = '\0'; // Add a null terminator at the end
+                i2c_write_blocking(i2c0, DEVADDR, log_entry, sizeof(log_entry), false);
+                sleep_ms(10);
+                entry_done = true;
+                break;
+            }
+            // if address is full add 64 to memory_slot and read again
+            else
+            {
+                if (memory_slot < MEMORY_ADDR_LOG_END)
+                {
+                    memory_slot = memory_slot + 0x40;
+                }
+                else
+                {
+                    erase_log();
+                    memory_slot = MEMORY_ADDR_LOG_START;
+                }
+            }
+        }
+    }
+}
+
+void read_from_log(char *string){
+    //
+}
+
+void erase_log()
+{
+    uint8_t buffer[3];
+    for (uint16_t i = MEMORY_ADDR_LOG_START; i != MEMORY_ADDR_LOG_END; i = i + MEMORY_SIZE_LOG_ENTRY)
+    {
+        buffer[0] = i >> 8;
+        buffer[1] = i;
+        buffer[2] = 0x00;
+        i2c_write_blocking(i2c0, DEVADDR, buffer, sizeof(buffer), false);
+        sleep_ms(10);
     }
 }

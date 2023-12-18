@@ -66,6 +66,7 @@ int main()
     // Buffers for I2C to EEPROM write and read
     uint8_t write_buf[4];
     uint8_t read_buf[2];
+    char log_string[61];
 
     // Reading from EEPROM on power-up
     const uint16_t memory_slot = MEMORY_ADDR_LED_STATES;
@@ -77,7 +78,10 @@ int main()
     led_states.state = read_buf[1];     // State is the last (task requirement)
     led_states.not_state = read_buf[0]; // Inverse of state goes first
 
-    // int my_character;
+    // Writing 'boot' to the log on power-up
+    memcpy(log_string, "boot", strlen("boot"));
+    write_to_log(log_string);                  // writing 'boot' to log
+    memset(log_string, 0, sizeof(log_string)); // clearing the log_string
 
     // Applying starting states
     if (led_state_is_valid(&led_states)) // Comparing state to inverse state to validate reading from memory; otherwise, default states
@@ -128,10 +132,16 @@ int main()
                     print_led_states(&led_states);
                     print_time_stamp_s();
 
+                    // Writing to log
+                    char *formed_string = form_led_states(&led_states);
+                    memcpy(log_string, formed_string, sizeof(log_string));
+                    write_to_log(log_string);                  // writing led states to the log
+                    memset(log_string, 0, sizeof(log_string)); // clearing the log_string
+
                     sw_states.sw_changed = false;
                 }
 
-                // Changing states
+                // Changing  sw states
                 if (sw_states.sw_all_toggle && (!sw_states.switch0 || !sw_states.switch1 || !sw_states.switch2))
                 {
                     sw_states.sw_all_toggle = false;
@@ -225,6 +235,20 @@ int main()
 
         case STATE_READ:
             printf("Read\n");
+            // if nothing is availabale print that there is nothing
+            // reading the whole log from min adress o to max if available
+
+            uint8_t buffer[10] = {51, 32, 93, 84, 75, 16, 17, 28};
+            uint16_t crc = crc16(buffer, 8);
+            // put CRC after data
+            buffer[8] = (uint8_t)(crc >> 8);
+            buffer[9] = (uint8_t)crc;
+            // validate data
+            if (crc16(buffer, 10) != 0)
+            {
+                printf("Error\n");
+            }
+
             program_state = STATE_IDLE;
             break;
 
