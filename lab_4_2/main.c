@@ -44,11 +44,13 @@ int main()
     gpio_pull_up(I2C0_SDA_PIN);
     gpio_pull_up(I2C0_SCL_PIN);
 
+    printf("STARTING\n");
     // Variables
     char my_character;
     int my_character_int;
     char my_character_array[MY_STRING_LENGTH_MAX];
     int my_input_index = 0;
+    char *formed_string;
 
     // Interrupts
     gpio_set_irq_enabled_with_callback(UART_RX_PIN, GPIO_IRQ_EDGE_RISE, true, &my_interrupt_handler_input_mode);
@@ -78,10 +80,12 @@ int main()
     led_states.state = read_buf[1];     // State is the last (task requirement)
     led_states.not_state = read_buf[0]; // Inverse of state goes first
 
+
+    memset(log_string, 0, sizeof(log_string)); // clearing the log_string
     // Writing 'boot' to the log on power-up
     memcpy(log_string, "boot", strlen("boot"));
+    log_string[4] = '\0'; 
     write_to_log(log_string);                  // writing 'boot' to log
-    memset(log_string, 0, sizeof(log_string)); // clearing the log_string
 
     // Applying starting states
     if (led_state_is_valid(&led_states)) // Comparing state to inverse state to validate reading from memory; otherwise, default states
@@ -133,11 +137,10 @@ int main()
                     print_time_stamp_s();
 
                     // Writing to log
-                    char *formed_string = form_led_states(&led_states);
+                    formed_string = form_led_states(&led_states);
                     memcpy(log_string, formed_string, sizeof(log_string));
                     write_to_log(log_string);                  // writing led states to the log
                     memset(log_string, 0, sizeof(log_string)); // clearing the log_string
-
                     sw_states.sw_changed = false;
                 }
 
@@ -234,26 +237,28 @@ int main()
             break;
 
         case STATE_READ:
-            printf("Read\n");
+            read_from_log();
+            
             // if nothing is availabale print that there is nothing
             // reading the whole log from min adress o to max if available
 
-            uint8_t buffer[10] = {51, 32, 93, 84, 75, 16, 17, 28};
-            uint16_t crc = crc16(buffer, 8);
-            // put CRC after data
-            buffer[8] = (uint8_t)(crc >> 8);
-            buffer[9] = (uint8_t)crc;
-            // validate data
-            if (crc16(buffer, 10) != 0)
-            {
-                printf("Error\n");
-            }
+            // uint8_t buffer[10] = {51, 32, 93, 84, 75, 16, 17, 28};
+            // uint16_t crc = crc16(buffer, 8);
+            // // put CRC after data
+            // buffer[8] = (uint8_t)(crc >> 8);
+            // buffer[9] = (uint8_t)crc;
+            // // validate data
+            // if (crc16(buffer, 10) != 0)
+            // {
+            //     printf("Error\n");
+            // }
 
             program_state = STATE_IDLE;
             break;
 
         case STATE_ERASE:
-            printf("Erase\n");
+            printf("Erasing log\n");
+            erase_log();
             program_state = STATE_IDLE;
             break;
         }

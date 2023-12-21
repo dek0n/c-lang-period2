@@ -120,6 +120,7 @@ uint16_t crc16(const uint8_t *data_p, size_t length);
 void write_to_log(char * string);
 void erase_log();
 char *form_led_states(ledstate *ls);
+void read_from_log();
 
 // void my_interrupt_handler(); // this function is currently in main.c
 

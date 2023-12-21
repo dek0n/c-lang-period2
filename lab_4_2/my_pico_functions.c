@@ -241,17 +241,15 @@ void write_to_log(char *string)
                 log_entry[0] = memory_slot >> 8;
                 log_entry[1] = memory_slot;
                 int string_length = strlen(string);
-
                 // Start copying the string to log_entry at index 3
                 for (int i = 0; i < string_length; i++)
                 {
                     log_entry[i + 2] = string[i];
                 }
-                log_entry[string_length + 2] = '0';  // Add CRC!
-                log_entry[string_length + 3] = '0';  // Add CRC!
-                log_entry[string_length + 4] = '\0'; // Add a null terminator at the end
+                log_entry[string_length + 2] = '\0'; // Add a null terminator at the end
+                log_entry[string_length + 3] = 'C';  // Add CRC!
+                log_entry[string_length + 4] = 'C';  // Add CRC!
                 i2c_write_blocking(i2c0, DEVADDR, log_entry, sizeof(log_entry), false);
-                sleep_ms(10);
                 entry_done = true;
                 break;
             }
@@ -272,8 +270,46 @@ void write_to_log(char *string)
     }
 }
 
-void read_from_log(char *string){
-    //
+void read_from_log()
+{
+    uint16_t memory_slot = MEMORY_ADDR_LOG_START;
+    uint8_t buffer[2];
+    uint8_t read_buf[1];
+    int log_line = 1;
+
+    while (memory_slot != MEMORY_ADDR_LOG_END)
+    {
+        buffer[0] = memory_slot >> 8;
+        buffer[1] = memory_slot;
+        i2c_write_blocking(i2c0, DEVADDR, buffer, sizeof(buffer), false);
+
+        // Reading the memory slot status, which is also the first character of the log entry
+        i2c_read_blocking(i2c0, DEVADDR, read_buf, 1, false);
+        char character_to_print = read_buf[0];
+
+        if (character_to_print != 0) // Check if the log entry is not empty
+        {
+            printf("LOG %d. %c", log_line, character_to_print); // Print line number and first character
+
+            while (character_to_print != '\0') // Continue reading until null terminator is reached
+            {
+                i2c_read_blocking(i2c0, DEVADDR, read_buf, 1, false);
+                character_to_print = read_buf[0];
+
+                if (character_to_print != '\0')
+                {
+                    printf("%c", character_to_print);
+                }
+            }
+            printf("\n");
+            log_line++;
+        }
+
+        if (memory_slot < MEMORY_ADDR_LOG_END)
+        {
+            memory_slot += 0x40; // Move to the next log entry
+        }
+    }
 }
 
 void erase_log()
