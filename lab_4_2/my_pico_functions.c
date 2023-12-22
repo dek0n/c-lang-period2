@@ -167,7 +167,6 @@ void my_configure_motor()
 
 void motor_turn_off_coils()
 {
-
     gpio_put(PIN_MOTOR_1, 0);
     gpio_put(PIN_MOTOR_2, 0);
     gpio_put(PIN_MOTOR_3, 0);
@@ -176,7 +175,6 @@ void motor_turn_off_coils()
 
 void motor_step(int in1, int in2, int in3, int in4)
 {
-
     gpio_put(PIN_MOTOR_1, in1);
     gpio_put(PIN_MOTOR_2, in2);
     gpio_put(PIN_MOTOR_3, in3);
@@ -230,6 +228,7 @@ void write_to_log(char *string)
             buffer[0] = memory_slot >> 8;
             buffer[1] = memory_slot;
             i2c_write_blocking(i2c0, DEVADDR, buffer, sizeof(buffer), false);
+            sleep_ms(10);
 
             // reading if the address is empty
             i2c_read_blocking(i2c0, DEVADDR, read_buf, 1, false);
@@ -250,6 +249,7 @@ void write_to_log(char *string)
                 log_entry[string_length + 3] = 'C';  // Add CRC!
                 log_entry[string_length + 4] = 'C';  // Add CRC!
                 i2c_write_blocking(i2c0, DEVADDR, log_entry, sizeof(log_entry), false);
+                sleep_ms(10);
                 entry_done = true;
                 break;
             }

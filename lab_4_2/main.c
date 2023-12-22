@@ -44,7 +44,6 @@ int main()
     gpio_pull_up(I2C0_SDA_PIN);
     gpio_pull_up(I2C0_SCL_PIN);
 
-    printf("STARTING\n");
     // Variables
     char my_character;
     int my_character_int;
@@ -76,16 +75,18 @@ int main()
     write_buf[1] = memory_slot & MASK_8B_ALL1;
 
     i2c_write_blocking(i2c0, DEVADDR, write_buf, 2, false);
+    sleep_ms(10);
     i2c_read_blocking(i2c0, DEVADDR, read_buf, 2, false);
     led_states.state = read_buf[1];     // State is the last (task requirement)
     led_states.not_state = read_buf[0]; // Inverse of state goes first
 
-
     memset(log_string, 0, sizeof(log_string)); // clearing the log_string
     // Writing 'boot' to the log on power-up
     memcpy(log_string, "boot", strlen("boot"));
-    log_string[4] = '\0'; 
+    log_string[4] = '\0';
     write_to_log(log_string);                  // writing 'boot' to log
+    sleep_ms(10);
+    memset(log_string, 0, sizeof(log_string)); // clearing the log_string
 
     // Applying starting states
     if (led_state_is_valid(&led_states)) // Comparing state to inverse state to validate reading from memory; otherwise, default states
@@ -141,9 +142,11 @@ int main()
                     memcpy(log_string, formed_string, sizeof(log_string));
                     write_to_log(log_string);                  // writing led states to the log
                     memset(log_string, 0, sizeof(log_string)); // clearing the log_string
+                    memset(write_buf, 0, sizeof(write_buf));   // clearing the write_buf
+                    free(formed_string);
                     sw_states.sw_changed = false;
+                    sleep_ms(50); // ??
                 }
-
                 // Changing  sw states
                 if (sw_states.sw_all_toggle && (!sw_states.switch0 || !sw_states.switch1 || !sw_states.switch2))
                 {
@@ -238,7 +241,7 @@ int main()
 
         case STATE_READ:
             read_from_log();
-            
+
             // if nothing is availabale print that there is nothing
             // reading the whole log from min adress o to max if available
 
